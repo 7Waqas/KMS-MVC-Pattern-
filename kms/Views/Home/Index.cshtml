@@ -1,0 +1,235 @@
+﻿@model kms.Models.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5 fw-bold">
+            <i class="bi bi-shield-lock-fill text-primary"></i>
+            Intelligent Key Security Control Center
+        </h1>
+        <p class="text-muted">
+            Real-time monitoring of key management activities
+        </p>
+
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <!-- Total Keys -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Total Keys</p>
+                        <h2 class="fw-bold mb-0">@Model.TotalKeys</h2>
+                    </div>
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-key-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Employees -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Total Employees</p>
+                        <h2 class="fw-bold mb-0">@Model.TotalEmployees</h2>
+                    </div>
+                    <div class="stat-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keys Not Taken -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Keys Not Taken</p>
+                        <h2 class="fw-bold mb-0 text-warning">
+                            @Model.KeysNotTakenToday
+                        </h2>
+                    </div>
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-exclamation-circle-fill"></i>
+                    </div>
+                </div>
+                <a asp-controller="Reports" asp-action="MorningKeysNotTaken"
+                   class="btn btn-sm btn-warning mt-2">
+                    View Details
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keys Not Returned -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100 stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Keys Not Returned</p>
+                        <h2 class="fw-bold mb-0 text-danger">
+                            @Model.KeysNotReturnedToday
+                        </h2>
+                    </div>
+                    <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-arrow-return-left"></i>
+                    </div>
+                </div>
+                <a asp-controller="Reports" asp-action="EveningKeysNotReturned"
+                   class="btn btn-sm btn-danger mt-2">
+                    View Details
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Second Row -->
+<div class="row g-4 mb-4">
+    <!-- Unauthorized Access Alert -->
+    @if (Model.UnauthorizedAccessToday > 0)
+    {
+        <div class="col-12">
+            <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center"
+                 role="alert">
+                <i class="bi bi-shield-exclamation fs-3 me-3"></i>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-1">
+                        ⚠️ Unauthorized Access Detected!
+                    </h5>
+                    <p class="mb-2">
+                        <strong>@Model.UnauthorizedAccessToday</strong>
+                        unauthorized key access(es) recorded today.
+                    </p>
+                    <a asp-controller="Reports" asp-action="UnauthorizedAccess"
+                       class="btn btn-sm btn-danger">
+                        View Alert Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0 fw-bold">
+                    <i class="bi bi-clock-history text-primary"></i>
+                    Recent Activity Today
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.RecentActivities.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Key</th>
+                                    <th>Employee</th>
+                                    <th>Action</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var activity in Model.RecentActivities)
+                                {
+                                    <tr class="@(activity.IsUnauthorized ? "table-danger" : "")">
+                                        <td>
+                                            <i class="bi bi-clock text-muted me-1"></i>
+                                            @activity.Time
+                                        </td>
+                                        <td>
+                                            <i class="bi bi-key text-primary me-1"></i>
+                                            <strong>@activity.KeyName</strong>
+                                        </td>
+                                        <td>
+                                            <i class="bi bi-person text-success me-1"></i>
+                                            @activity.Employee
+                                        </td>
+                                        <td>
+                                            @if (activity.Action.Contains("OUT"))
+                                            {
+                                                <span class="badge bg-info">
+                                                    <i class="bi bi-box-arrow-right"></i>
+                                                    @activity.Action
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-box-arrow-in-left"></i>
+                                                    @activity.Action
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (activity.IsUnauthorized)
+                                            {
+                                                <span class="badge bg-danger">
+                                                    <i class="bi bi-x-circle"></i>
+                                                    UNAUTHORIZED
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i>
+                                                    Authorized
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox display-1 text-muted"></i>
+                        <p class="text-muted mt-3">No activity recorded today</p>
+                    </div>
+                }
+            </div>
+            <div class="card-footer bg-white border-0 text-center">
+                <a asp-controller="Reports" asp-action="FullDailyLog"
+                   class="btn btn-link text-decoration-none">
+                    View Full Daily Log
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Add animations on load
+        $(document).ready(function() {
+            $('.stat-card').each(function(index) {
+                $(this).delay(100 * index).fadeIn(300);
+            });
+        });
+    </script>
+}

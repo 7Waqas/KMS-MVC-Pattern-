@@ -1,0 +1,146 @@
+﻿@model kms.Models.ViewModels.ReportViewModel
+@{
+    ViewData["Title"] = "Morning Keys NOT Taken";
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="display-6 fw-bold">
+            <i class="bi bi-sunrise text-warning"></i>
+            Morning Keys NOT Taken
+        </h1>
+        <p class="text-muted">
+            Keys that were not scanned out in the morning
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a asp-controller="Home" asp-action="Index"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Date Filter -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <label class="form-label fw-bold">
+                    <i class="bi bi-calendar3"></i> Select Date
+                </label>
+                <input type="date"
+                       class="form-control"
+                       id="reportDate"
+                       value="@Model.SelectedDate.ToString("yyyy-MM-dd")"
+                       onchange="loadReport()" />
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+            <div class="card-body">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle text-warning"></i>
+                    Total Keys NOT Taken:
+                    <span class="badge bg-warning" id="totalCount">
+                        Loading...
+                    </span>
+                </h5>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="reportTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th><i class="bi bi-key"></i> Key Name</th>
+                        <th><i class="bi bi-geo-alt"></i> Location</th>
+                        <th><i class="bi bi-exclamation-circle"></i> Status</th>
+                        <th><i class="bi bi-people"></i> Authorized Persons</th>
+                    </tr>
+                </thead>
+                <tbody id="reportBody">
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading data...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function loadReport() {
+            const date = $('#reportDate').val();
+            const tbody = $('#reportBody');
+
+            // Show loading
+            tbody.html(`
+                <tr>
+                    <td colspan="4" class="text-center py-5">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2 text-muted">Loading...</p>
+                    </td>
+                </tr>
+            `);
+
+            $.get(`/Reports/GetMorningKeysNotTaken?date=${date}`, function(data) {
+                tbody.empty();
+                $('#totalCount').text(data.length);
+
+                if (data.length === 0) {
+                    tbody.html(`
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <i class="bi bi-check-circle display-1 text-success"></i>
+                                <p class="mt-3 text-success fw-bold">
+                                    ✅ All keys were taken out this morning!
+                                </p>
+                            </td>
+                        </tr>
+                    `);
+                    return;
+                }
+
+                data.forEach(item => {
+                    tbody.append(`
+                        <tr class="table-danger">
+                            <td>
+                                <i class="bi bi-key-fill text-danger me-2"></i>
+                                <strong>${item.keyName}</strong>
+                            </td>
+                            <td>${item.keyLocation}</td>
+                            <td>
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle"></i> NOT TAKEN
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-muted">
+                                    <i class="bi bi-person-check"></i>
+                                    ${item.authorizedPersons}
+                                </span>
+                            </td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+
+        $(document).ready(function() {
+            loadReport();
+        });
+    </script>
+}

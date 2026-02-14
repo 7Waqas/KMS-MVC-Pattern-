@@ -1,0 +1,99 @@
+﻿@model IEnumerable<dynamic>
+@{
+    ViewData["Title"] = "Authorizations";
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="display-6 fw-bold">
+            <i class="bi bi-shield-check text-info"></i>
+            Key Authorizations
+        </h1>
+        <p class="text-muted">Manage which employees can access which keys</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a asp-action="Manage" class="btn btn-info">
+            <i class="bi bi-plus-circle"></i> Manage Authorizations
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th><i class="bi bi-key"></i> Key Name</th>
+                        <th><i class="bi bi-geo-alt"></i> Location</th>
+                        <th><i class="bi bi-person"></i> Authorized Employee</th>
+                        <th><i class="bi bi-building"></i> Department</th>
+                        <th><i class="bi bi-calendar"></i> Assigned Date</th>
+                        <th class="text-center"><i class="bi bi-gear"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Any())
+                    {
+                        @foreach (var auth in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <i class="bi bi-key-fill text-primary me-2"></i>
+                                    <strong>@auth.KeyName</strong>
+                                </td>
+                                <td>
+                                    <i class="bi bi-geo-alt text-muted me-1"></i>
+                                    @auth.KeyLocation
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle bg-success text-white me-2">
+                                            @auth.EmployeeName.Substring(0, 1)
+                                        </div>
+                                        <strong>@auth.EmployeeName</strong>
+                                    </div>
+                                </td>
+                                <td>@auth.Department</td>
+                                <td>
+                                    <i class="bi bi-calendar3 text-muted me-1"></i>
+                                    @auth.AssignedDate.ToString("dd/MM/yyyy")
+                                </td>
+                                <td class="text-center">
+                                    <form asp-action="Delete" asp-route-id="@auth.AuthId"
+                                          method="post" class="d-inline"
+                                          onsubmit="return confirm('Remove this authorization?')">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <i class="bi bi-inbox display-1 text-muted"></i>
+                                <p class="mt-3 text-muted">No authorizations found</p>
+                                <a asp-action="Manage" class="btn btn-info">
+                                    <i class="bi bi-plus-circle"></i> Create First Authorization
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,237 @@
+﻿@model kms.Models.ViewModels.ReportViewModel
+@{
+    ViewData["Title"] = "Full Daily Activity Log";
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="display-6 fw-bold">
+            <i class="bi bi-journal-text text-primary"></i>
+            Full Daily Activity Log
+        </h1>
+        <p class="text-muted">
+            Complete overview of all key activities for selected date
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a asp-controller="Home" asp-action="Index"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Date Filter & Export -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <label class="form-label fw-bold">
+                    <i class="bi bi-calendar3"></i> Select Date
+                </label>
+                <input type="date"
+                       class="form-control"
+                       id="reportDate"
+                       value="@Model.SelectedDate.ToString("yyyy-MM-dd")"
+                       onchange="loadReport()" />
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="bi bi-activity text-primary"></i>
+                            Total Activities:
+                            <span class="badge bg-primary" id="totalCount">0</span>
+                        </h5>
+                    </div>
+                    <button class="btn btn-success" onclick="exportToExcel()">
+                        <i class="bi bi-file-earmark-excel"></i> Export to Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4" id="summaryCards">
+    <!-- Will be populated via JS -->
+</div>
+
+<!-- Report Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-table"></i> Detailed Activity Log
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="reportTable">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-person"></i> Employee</th>
+                        <th><i class="bi bi-key"></i> Key Name</th>
+                        <th><i class="bi bi-arrow-left-right"></i> Direction</th>
+                        <th><i class="bi bi-clock"></i> Scan Time</th>
+                        <th><i class="bi bi-shield-check"></i> Auth Status</th>
+                    </tr>
+                </thead>
+                <tbody id="reportBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-2 text-muted">Loading activity log...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentData = [];
+
+        function loadReport() {
+            const date = $('#reportDate').val();
+            const tbody = $('#reportBody');
+
+            tbody.html(`
+                <tr>
+                    <td colspan="5" class="text-center py-5">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2 text-muted">Loading...</p>
+                    </td>
+                </tr>
+            `);
+
+            $.get(`/Reports/GetFullDailyLog?date=${date}`, function(data) {
+                currentData = data;
+                tbody.empty();
+                $('#totalCount').text(data.length);
+
+                // Update summary cards
+                updateSummaryCards(data);
+
+                if (data.length === 0) {
+                    tbody.html(`
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <i class="bi bi-inbox display-1 text-muted"></i>
+                                <p class="mt-3 text-muted fw-bold">
+                                    No activity recorded for this date
+                                </p>
+                            </td>
+                        </tr>
+                    `);
+                    return;
+                }
+
+                data.forEach(item => {
+                    const isOut = item.direction && item.direction.includes('OUT');
+                    const isUnauth = item.authStatus &&
+                                    item.authStatus.includes('UNAUTHORIZED');
+
+                    const rowClass = isUnauth ? 'table-danger' :
+                                    isOut ? 'table-info' : 'table-success';
+
+                    tbody.append(`
+                        <tr class="${rowClass} align-middle">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle ${isUnauth ? 'bg-danger' : 'bg-primary'} text-white me-2">
+                                        ${item.employee ? item.employee.charAt(0) : '?'}
+                                    </div>
+                                    <strong>${item.employee || 'Unknown'}</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <i class="bi bi-key-fill me-1"></i>
+                                ${item.keyName}
+                            </td>
+                            <td>
+                                ${isOut ?
+                                    '<span class="badge bg-info"><i class="bi bi-box-arrow-right"></i> ' + item.direction + '</span>' :
+                                    '<span class="badge bg-success"><i class="bi bi-box-arrow-in-left"></i> ' + item.direction + '</span>'
+                                }
+                            </td>
+                            <td>
+                                <i class="bi bi-clock text-muted me-1"></i>
+                                ${item.scanTime}
+                            </td>
+                            <td>
+                                ${isUnauth ?
+                                    '<span class="badge bg-danger px-3"><i class="bi bi-x-circle"></i> ' + item.authStatus + '</span>' :
+                                    '<span class="badge bg-success px-3"><i class="bi bi-check-circle"></i> ' + item.authStatus + '</span>'
+                                }
+                            </td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+
+        function updateSummaryCards(data) {
+            const morning = data.filter(d => d.direction && d.direction.includes('Morning')).length;
+            const evening = data.filter(d => d.direction && d.direction.includes('Evening')).length;
+            const unauthorized = data.filter(d => d.authStatus && d.authStatus.includes('UNAUTHORIZED')).length;
+
+            $('#summaryCards').html(`
+                <div class="col-md-4">
+                    <div class="card border-0 bg-info bg-opacity-10">
+                        <div class="card-body text-center">
+                            <h3 class="text-info mb-1">${morning}</h3>
+                            <p class="mb-0 small text-muted">Morning Activities</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 bg-success bg-opacity-10">
+                        <div class="card-body text-center">
+                            <h3 class="text-success mb-1">${evening}</h3>
+                            <p class="mb-0 small text-muted">Evening Activities</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 bg-danger bg-opacity-10">
+                        <div class="card-body text-center">
+                            <h3 class="text-danger mb-1">${unauthorized}</h3>
+                            <p class="mb-0 small text-muted">Unauthorized Access</p>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+
+        function exportToExcel() {
+            if (currentData.length === 0) {
+                alert('No data to export!');
+                return;
+            }
+
+            // Simple CSV export
+            let csv = 'Employee,Key Name,Direction,Scan Time,Auth Status\n';
+            currentData.forEach(item => {
+                csv += `"${item.employee || 'Unknown'}","${item.keyName}","${item.direction}","${item.scanTime}","${item.authStatus}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Daily_Activity_Log_${$('#reportDate').val()}.csv`;
+            a.click();
+        }
+
+        $(document).ready(function() {
+            loadReport();
+        });
+    </script>
+}
