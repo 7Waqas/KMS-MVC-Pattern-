@@ -1,7 +1,6 @@
 ﻿using kms.Models;
 using kms.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace kms.Controllers
@@ -27,42 +26,54 @@ namespace kms.Controllers
         public async Task<IActionResult> MorningKeysNotTaken(DateOnly? date)
         {
             var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
+            var yesterday = selectedDate.AddDays(-1);
 
-            var sql = @"
-                SELECT 
-                    km.KeyName,
-                    km.KeyLocation,
-                    'NOT TAKEN' AS MorningStatus,
-                    ISNULL(STUFF((
-                        SELECT ', ' + ea.FullName
-                        FROM KeyAuthorization ka
-                        INNER JOIN EmployeeMaster ea
-                            ON ea.EnrollNumber = ka.EmpEnroll
-                        WHERE ka.KeyEnroll = km.EnrollNumber
-                        FOR XML PATH('')
-                    ), 1, 2, ''), '--') AS AuthorizedPersons
-                FROM KeyMaster km
-                WHERE km.IsActive = 1
-                AND NOT EXISTS (
-                    SELECT 1 FROM KeyReportData krd
-                    WHERE krd.KeyName = km.KeyName
-                      AND krd.ReportDate = @SelectedDate
-                      AND krd.ReportType = 1
-                )
-                ORDER BY km.KeyName";
-
-            var data = await _context.Database
-                .SqlQueryRaw<dynamic>(sql,
-                    new SqlParameter("@SelectedDate", selectedDate))
+            // Get all active keys
+            var allKeys = await _context.KeyMasters
+                .Where(k => k.IsActive == true)
                 .ToListAsync();
+
+            // Get keys that WERE taken today morning (ReportType = 1)
+            var takenTodayKeyNames = await _context.KeyReportData
+                .Where(r => r.ReportDate.Year == selectedDate.Year &&
+                            r.ReportDate.Month == selectedDate.Month &&
+                            r.ReportDate.Day == selectedDate.Day &&
+                            r.ReportType == 1)
+                .Select(r => r.KeyName)
+                .ToListAsync();
+
+            // Get keys that were NOT returned yesterday evening (ReportType = 2)
+            var returnedYesterdayKeyNames = await _context.KeyReportData
+                .Where(r => r.ReportDate.Year == yesterday.Year &&
+                            r.ReportDate.Month == yesterday.Month &&
+                            r.ReportDate.Day == yesterday.Day &&
+                            r.ReportType == 2)
+                .Select(r => r.KeyName)
+                .ToListAsync();
+
+            // Keys not taken today
+            var notTakenTodayKeys = allKeys
+                .Where(k => !takenTodayKeyNames.Contains(k.KeyName))
+                .ToList();
+
+            // Keys not returned yesterday
+            var notReturnedYesterdayKeys = allKeys
+                .Where(k => !returnedYesterdayKeyNames.Contains(k.KeyName))
+                .ToList();
 
             var viewModel = new ReportViewModel
             {
                 SelectedDate = selectedDate,
                 ReportType = 1,
                 ReportTitle = "Morning Keys NOT Taken",
-                TotalRecords = data.Count
+                TotalRecords = notTakenTodayKeys.Count
             };
+
+            ViewBag.NotTakenTodayKeys = notTakenTodayKeys;
+            ViewBag.NotReturnedYesterdayKeys = notReturnedYesterdayKeys;
+            ViewBag.NotReturnedYesterdayCount = notReturnedYesterdayKeys.Count;
+            ViewBag.SelectedDate = selectedDate;
+            ViewBag.Yesterday = yesterday;
 
             return View(viewModel);
         }
@@ -74,41 +85,32 @@ namespace kms.Controllers
         {
             var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
 
-            var sql = @"
-                SELECT 
-                    km.KeyName,
-                    km.KeyLocation,
-                    'NOT RETURNED' AS EveningStatus,
-                    ISNULL(STUFF((
-                        SELECT ', ' + ea.FullName
-                        FROM KeyAuthorization ka
-                        INNER JOIN EmployeeMaster ea
-                            ON ea.EnrollNumber = ka.EmpEnroll
-                        WHERE ka.KeyEnroll = km.EnrollNumber
-                        FOR XML PATH('')
-                    ), 1, 2, ''), '--') AS AuthorizedPersons
-                FROM KeyMaster km
-                WHERE km.IsActive = 1
-                AND NOT EXISTS (
-                    SELECT 1 FROM KeyReportData krd
-                    WHERE krd.KeyName = km.KeyName
-                      AND krd.ReportDate = @SelectedDate
-                      AND krd.ReportType = 2
-                )
-                ORDER BY km.KeyName";
-
-            var data = await _context.Database
-                .SqlQueryRaw<dynamic>(sql,
-                    new SqlParameter("@SelectedDate", selectedDate))
+            var allKeys = await _context.KeyMasters
+                .Where(k => k.IsActive == true)
                 .ToListAsync();
+
+            var returnedKeyNames = await _context.KeyReportData
+                .Where(r => r.ReportDate.Year == selectedDate.Year &&
+                            r.ReportDate.Month == selectedDate.Month &&
+                            r.ReportDate.Day == selectedDate.Day &&
+                            r.ReportType == 2)
+                .Select(r => r.KeyName)
+                .ToListAsync();
+
+            var notReturnedKeys = allKeys
+                .Where(k => !returnedKeyNames.Contains(k.KeyName))
+                .ToList();
 
             var viewModel = new ReportViewModel
             {
                 SelectedDate = selectedDate,
                 ReportType = 2,
                 ReportTitle = "Evening Keys NOT Returned",
-                TotalRecords = data.Count
+                TotalRecords = notReturnedKeys.Count
             };
+
+            ViewBag.NotReturnedKeys = notReturnedKeys;
+            ViewBag.SelectedDate = selectedDate;
 
             return View(viewModel);
         }
@@ -120,10 +122,32 @@ namespace kms.Controllers
         {
             var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
 
+            Console.WriteLine($"UnauthorizedAccess - Selected Date: {selectedDate}");
+
             var data = await _context.KeyReportData
-                .Where(r => r.ReportDate == selectedDate && r.ReportType == 3)
+                .Where(r => r.ReportDate.Year == selectedDate.Year &&
+                            r.ReportDate.Month == selectedDate.Month &&
+                            r.ReportDate.Day == selectedDate.Day &&
+                            r.ReportType == 3)
                 .OrderBy(r => r.ScanTime)
                 .ToListAsync();
+
+            Console.WriteLine($"UnauthorizedAccess - Found {data.Count} records");
+
+            var enrichedData = new List<Dictionary<string, object>>();
+
+            foreach (var item in data)
+            {
+                enrichedData.Add(new Dictionary<string, object>
+                {
+                    { "Employee", item.Employee ?? "Unknown" },
+                    { "KeyName", item.KeyName ?? "" },
+                    { "ScanTime", item.ScanTime ?? "" },
+                    { "ReportDate", item.ReportDate },
+                    { "AlertStatus", item.AlertStatus ?? "" },
+                    { "AuthorizedPersons", GetAuthorizedPersonsForKey(item.KeyName) }
+                });
+            }
 
             var viewModel = new ReportViewModel
             {
@@ -133,7 +157,30 @@ namespace kms.Controllers
                 TotalRecords = data.Count
             };
 
+            ViewBag.UnauthorizedData = enrichedData;
+            ViewBag.SelectedDate = selectedDate;
+
             return View(viewModel);
+        }
+
+        private string GetAuthorizedPersonsForKey(string keyName)
+        {
+            if (string.IsNullOrEmpty(keyName)) return "--";
+
+            var key = _context.KeyMasters
+                .FirstOrDefault(k => k.KeyName == keyName);
+
+            if (key == null) return "--";
+
+            var persons = _context.KeyAuthorizations
+                .Where(a => a.KeyEnroll == key.EnrollNumber)
+                .Join(_context.EmployeeMasters,
+                    ka => ka.EmpEnroll,
+                    em => em.EnrollNumber,
+                    (ka, em) => em.FullName)
+                .ToList();
+
+            return persons.Any() ? string.Join(", ", persons) : "--";
         }
 
         // =============================================
@@ -143,83 +190,62 @@ namespace kms.Controllers
         {
             var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
 
-            var sql = @"
-                SELECT 
-                    km.KeyName,
-                    km.KeyLocation,
-                    ISNULL(
-                        (SELECT TOP 1 'OUT - Taken (' + 
-                             ISNULL(Employee, 'Unknown') + ')'
-                         FROM KeyReportData
-                         WHERE KeyName = km.KeyName
-                           AND ReportDate = @SelectedDate
-                           AND ReportType = 1),
-                        'NOT TAKEN'
-                    ) AS MorningStatus,
-                    ISNULL(
-                        (SELECT TOP 1 ScanTime
-                         FROM KeyReportData
-                         WHERE KeyName = km.KeyName
-                           AND ReportDate = @SelectedDate
-                           AND ReportType = 1),
-                        '--'
-                    ) AS MorningTime,
-                    ISNULL(
-                        (SELECT TOP 1 'IN - Returned (' + 
-                             ISNULL(Employee, 'Unknown') + ')'
-                         FROM KeyReportData
-                         WHERE KeyName = km.KeyName
-                           AND ReportDate = @SelectedDate
-                           AND ReportType = 2),
-                        'NOT RETURNED'
-                    ) AS EveningStatus,
-                    ISNULL(
-                        (SELECT TOP 1 ScanTime
-                         FROM KeyReportData
-                         WHERE KeyName = km.KeyName
-                           AND ReportDate = @SelectedDate
-                           AND ReportType = 2),
-                        '--'
-                    ) AS EveningTime,
-                    ISNULL(STUFF((
-                        SELECT ', ' + ea.FullName
-                        FROM KeyAuthorization ka
-                        INNER JOIN EmployeeMaster ea
-                            ON ea.EnrollNumber = ka.EmpEnroll
-                        WHERE ka.KeyEnroll = km.EnrollNumber
-                        FOR XML PATH('')
-                    ), 1, 2, ''), '--') AS AuthorizedPersons,
-                    CASE 
-                        WHEN EXISTS (
-                            SELECT 1 FROM KeyReportData
-                            WHERE KeyName = km.KeyName
-                              AND ReportDate = @SelectedDate
-                              AND ReportType = 3
-                        ) THEN 'UNAUTHORIZED'
-                        WHEN EXISTS (
-                            SELECT 1 FROM KeyReportData
-                            WHERE KeyName = km.KeyName
-                              AND ReportDate = @SelectedDate
-                              AND ReportType IN (1, 2)
-                        ) THEN 'OK'
-                        ELSE 'NO ACTIVITY'
-                    END AS OverallStatus
-                FROM KeyMaster km
-                WHERE km.IsActive = 1
-                ORDER BY km.KeyName";
+            Console.WriteLine($"FullDailyLog - Selected Date: {selectedDate}");
 
-            var data = await _context.Database
-                .SqlQueryRaw<dynamic>(sql,
-                    new SqlParameter("@SelectedDate", selectedDate))
+            var allKeys = await _context.KeyMasters
+                .Where(k => k.IsActive == true)
+                .OrderBy(k => k.KeyName)
                 .ToListAsync();
+
+            var allReportData = await _context.KeyReportData
+                .Where(r => r.ReportDate.Year == selectedDate.Year &&
+                            r.ReportDate.Month == selectedDate.Month &&
+                            r.ReportDate.Day == selectedDate.Day)
+                .ToListAsync();
+
+            Console.WriteLine($"FullDailyLog - Total Keys: {allKeys.Count}");
+            Console.WriteLine($"FullDailyLog - Report Data Count: {allReportData.Count}");
+
+            var morningData = allReportData.Where(r => r.ReportType == 1).ToList();
+            var eveningData = allReportData.Where(r => r.ReportType == 2).ToList();
+            var unauthorizedKeys = allReportData.Where(r => r.ReportType == 3)
+                .Select(r => r.KeyName).Distinct().ToList();
+
+            var fullLog = new List<Dictionary<string, object>>();
+
+            foreach (var key in allKeys)
+            {
+                var morningRecord = morningData.FirstOrDefault(m => m.KeyName == key.KeyName);
+                var eveningRecord = eveningData.FirstOrDefault(e => e.KeyName == key.KeyName);
+
+                fullLog.Add(new Dictionary<string, object>
+                {
+                    { "KeyName", key.KeyName },
+                    { "KeyLocation", key.KeyLocation ?? "" },
+                    { "MorningStatus", morningRecord?.Status ?? "NOT TAKEN" },
+                    { "MorningTime", morningRecord?.ScanTime ?? "--" },
+                    { "MorningEmployee", morningRecord?.Employee ?? "--" },
+                    { "EveningStatus", eveningRecord?.Status ?? "NOT RETURNED" },
+                    { "EveningTime", eveningRecord?.ScanTime ?? "--" },
+                    { "EveningEmployee", eveningRecord?.Employee ?? "--" },
+                    { "AuthorizedPersons", GetAuthorizedPersons(key.EnrollNumber) },
+                    { "OverallStatus", unauthorizedKeys.Contains(key.KeyName) ? "UNAUTHORIZED" :
+                                      (morningRecord != null || eveningRecord != null) ? "OK" : "NO ACTIVITY" }
+                });
+            }
 
             var viewModel = new ReportViewModel
             {
                 SelectedDate = selectedDate,
                 ReportType = 4,
                 ReportTitle = "Full Daily Key Activity Log",
-                TotalRecords = data.Count
+                TotalRecords = fullLog.Count
             };
+
+            ViewBag.FullLog = fullLog;
+            ViewBag.SelectedDate = selectedDate;
+
+            Console.WriteLine($"FullDailyLog - Full Log Count: {fullLog.Count}");
 
             return View(viewModel);
         }
@@ -232,28 +258,27 @@ namespace kms.Controllers
         {
             var selectedDate = DateOnly.Parse(date);
 
-            var data = await _context.KeyMasters
+            var allKeys = await _context.KeyMasters
                 .Where(k => k.IsActive == true)
-                .Where(k => !_context.KeyReportData
-                    .Any(r => r.KeyName == k.KeyName &&
-                              r.ReportDate == selectedDate &&
-                              r.ReportType == 1))
-                .Select(k => new
-                {
-                    k.KeyName,
-                    k.KeyLocation,
-                    Status = "NOT TAKEN",
-                    AuthorizedPersons = string.Join(", ",
-                        _context.KeyAuthorizations
-                            .Where(a => a.KeyEnroll == k.EnrollNumber)
-                            .Join(_context.EmployeeMasters,
-                                ka => ka.EmpEnroll,
-                                em => em.EnrollNumber,
-                                (ka, em) => em.FullName))
-                })
                 .ToListAsync();
 
-            return Json(data);
+            var takenKeyNames = await _context.KeyReportData
+                .Where(r => r.ReportDate == selectedDate && r.ReportType == 1)
+                .Select(r => r.KeyName)
+                .ToListAsync();
+
+            var notTakenKeys = allKeys
+                .Where(k => !takenKeyNames.Contains(k.KeyName))
+                .Select(k => new
+                {
+                    keyName = k.KeyName,
+                    keyLocation = k.KeyLocation,
+                    status = "NOT TAKEN",
+                    authorizedPersons = GetAuthorizedPersons(k.EnrollNumber)
+                })
+                .ToList();
+
+            return Json(notTakenKeys);
         }
 
         [HttpGet]
@@ -261,28 +286,27 @@ namespace kms.Controllers
         {
             var selectedDate = DateOnly.Parse(date);
 
-            var data = await _context.KeyMasters
+            var allKeys = await _context.KeyMasters
                 .Where(k => k.IsActive == true)
-                .Where(k => !_context.KeyReportData
-                    .Any(r => r.KeyName == k.KeyName &&
-                              r.ReportDate == selectedDate &&
-                              r.ReportType == 2))
-                .Select(k => new
-                {
-                    k.KeyName,
-                    k.KeyLocation,
-                    Status = "NOT RETURNED",
-                    AuthorizedPersons = string.Join(", ",
-                        _context.KeyAuthorizations
-                            .Where(a => a.KeyEnroll == k.EnrollNumber)
-                            .Join(_context.EmployeeMasters,
-                                ka => ka.EmpEnroll,
-                                em => em.EnrollNumber,
-                                (ka, em) => em.FullName))
-                })
                 .ToListAsync();
 
-            return Json(data);
+            var returnedKeyNames = await _context.KeyReportData
+                .Where(r => r.ReportDate == selectedDate && r.ReportType == 2)
+                .Select(r => r.KeyName)
+                .ToListAsync();
+
+            var notReturnedKeys = allKeys
+                .Where(k => !returnedKeyNames.Contains(k.KeyName))
+                .Select(k => new
+                {
+                    keyName = k.KeyName,
+                    keyLocation = k.KeyLocation,
+                    status = "NOT RETURNED",
+                    authorizedPersons = GetAuthorizedPersons(k.EnrollNumber)
+                })
+                .ToList();
+
+            return Json(notReturnedKeys);
         }
 
         [HttpGet]
@@ -295,11 +319,11 @@ namespace kms.Controllers
                 .OrderBy(r => r.ScanTime)
                 .Select(r => new
                 {
-                    r.Employee,
-                    r.KeyName,
-                    r.ScanTime,
-                    Date = r.ReportDate.ToString("dd/MM/yyyy"),
-                    r.AlertStatus
+                    employee = r.Employee,
+                    keyName = r.KeyName,
+                    scanTime = r.ScanTime,
+                    date = r.ReportDate.ToString("dd/MM/yyyy"),
+                    alertStatus = r.AlertStatus
                 })
                 .ToListAsync();
 
@@ -316,15 +340,28 @@ namespace kms.Controllers
                 .OrderBy(r => r.ScanTime)
                 .Select(r => new
                 {
-                    r.Employee,
-                    r.KeyName,
-                    r.Direction,
-                    r.ScanTime,
-                    r.AuthStatus
+                    employee = r.Employee,
+                    keyName = r.KeyName,
+                    direction = r.Direction,
+                    scanTime = r.ScanTime,
+                    authStatus = r.AuthStatus
                 })
                 .ToListAsync();
 
             return Json(data);
+        }
+
+        private string GetAuthorizedPersons(int keyEnrollNumber)
+        {
+            var persons = _context.KeyAuthorizations
+                .Where(a => a.KeyEnroll == keyEnrollNumber)
+                .Join(_context.EmployeeMasters,
+                    ka => ka.EmpEnroll,
+                    em => em.EnrollNumber,
+                    (ka, em) => em.FullName)
+                .ToList();
+
+            return persons.Any() ? string.Join(", ", persons) : "--";
         }
     }
 }

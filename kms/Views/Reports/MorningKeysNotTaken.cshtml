@@ -1,6 +1,11 @@
 ﻿@model kms.Models.ViewModels.ReportViewModel
 @{
     ViewData["Title"] = "Morning Keys NOT Taken";
+    var notTakenTodayKeys = ViewBag.NotTakenTodayKeys as List<kms.Models.KeyMaster>;
+    var notReturnedYesterdayKeys = ViewBag.NotReturnedYesterdayKeys as List<kms.Models.KeyMaster>;
+    var notReturnedYesterdayCount = (int)ViewBag.NotReturnedYesterdayCount;
+    var selectedDate = (DateOnly)ViewBag.SelectedDate;
+    var yesterday = (DateOnly)ViewBag.Yesterday;
 }
 
 <div class="row mb-4">
@@ -9,54 +14,89 @@
             <i class="bi bi-sunrise text-warning"></i>
             Morning Keys NOT Taken
         </h1>
-        <p class="text-muted">
-            Keys that were not scanned out in the morning
-        </p>
+        <p class="text-muted">Keys that were not scanned out in the morning</p>
     </div>
     <div class="col-md-4 text-end">
-        <a asp-controller="Home" asp-action="Index"
-           class="btn btn-outline-secondary">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Back to Dashboard
         </a>
     </div>
 </div>
 
-<!-- Date Filter -->
+<!-- Date Filter & Yesterday Alert -->
 <div class="row mb-4">
     <div class="col-md-4">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <label class="form-label fw-bold">
-                    <i class="bi bi-calendar3"></i> Select Date
-                </label>
-                <input type="date"
-                       class="form-control"
-                       id="reportDate"
-                       value="@Model.SelectedDate.ToString("yyyy-MM-dd")"
-                       onchange="loadReport()" />
+                <form asp-action="MorningKeysNotTaken" method="get">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-calendar3"></i> Select Date
+                    </label>
+                    <input type="date"
+                           name="date"
+                           class="form-control"
+                           value="@selectedDate.ToString("yyyy-MM-dd")"
+                           onchange="this.form.submit()" />
+                </form>
             </div>
         </div>
     </div>
     <div class="col-md-8">
-        <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10 mb-3">
             <div class="card-body">
                 <h5 class="mb-0">
                     <i class="bi bi-info-circle text-warning"></i>
-                    Total Keys NOT Taken:
-                    <span class="badge bg-warning" id="totalCount">
-                        Loading...
-                    </span>
+                    Keys NOT Taken Today:
+                    <span class="badge bg-warning">@Model.TotalRecords</span>
                 </h5>
             </div>
         </div>
+
+        @if (notReturnedYesterdayCount > 0)
+        {
+            <div class="alert alert-danger border-0 shadow-sm mb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="alert-heading mb-1">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Yesterday Not Returned
+                        </h6>
+                        <p class="mb-0">
+                            <strong>@notReturnedYesterdayCount</strong> keys were not returned yesterday evening
+                            (@yesterday.ToString("dd MMM yyyy"))
+                        </p>
+                    </div>
+                    <a asp-action="EveningKeysNotReturned"
+                       asp-route-date="@yesterday.ToString("yyyy-MM-dd")"
+                       class="btn btn-danger btn-sm">
+                        <i class="bi bi-arrow-right-circle"></i> View Details
+                    </a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-success border-0 shadow-sm mb-0">
+                <p class="mb-0">
+                    <i class="bi bi-check-circle-fill"></i>
+                    All keys were returned yesterday evening ✅
+                </p>
+            </div>
+        }
     </div>
 </div>
 
-<!-- Report Table -->
-<div class="card border-0 shadow-sm">
+<!-- Today's NOT TAKEN Table -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-warning bg-opacity-10 border-0">
+        <h5 class="mb-0 fw-bold">
+            <i class="bi bi-calendar-x"></i>
+            Keys NOT Taken Today (@selectedDate.ToString("dd MMM yyyy"))
+        </h5>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0" id="reportTable">
+            <table class="table table-hover mb-0">
                 <thead class="table-dark">
                     <tr>
                         <th><i class="bi bi-key"></i> Key Name</th>
@@ -65,43 +105,45 @@
                         <th><i class="bi bi-people"></i> Authorized Persons</th>
                     </tr>
                 </thead>
-                <tbody id="reportBody">
-                    <tr>
-                        <td colspan="4" class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p class="mt-2 text-muted">Loading data...</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+                <tbody>
+                    @if (notTakenTodayKeys != null && notTakenTodayKeys.Any())
+                    {
+                        @foreach (var key in notTakenTodayKeys)
+                        {
+                            var authorizedPersons = ViewContext.HttpContext
+                            .RequestServices
+                            .GetService<ApplicationDbContext>()
+                            .KeyAuthorizations
+                            .Where(a => a.KeyEnroll == key.EnrollNumber)
+                            .Join(ViewContext.HttpContext.RequestServices
+                            .GetService<ApplicationDbContext>().EmployeeMasters,
+                            ka => ka.EmpEnroll,
+                            em => em.EnrollNumber,
+                            (ka, em) => em.FullName)
+                            .ToList();
 
-@section Scripts {
-    <script>
-        function loadReport() {
-            const date = $('#reportDate').val();
-            const tbody = $('#reportBody');
-
-            // Show loading
-            tbody.html(`
-                <tr>
-                    <td colspan="4" class="text-center py-5">
-                        <div class="spinner-border text-primary"></div>
-                        <p class="mt-2 text-muted">Loading...</p>
-                    </td>
-                </tr>
-            `);
-
-            $.get(`/Reports/GetMorningKeysNotTaken?date=${date}`, function(data) {
-                tbody.empty();
-                $('#totalCount').text(data.length);
-
-                if (data.length === 0) {
-                    tbody.html(`
+                            <tr class="table-danger">
+                                <td>
+                                    <i class="bi bi-key-fill text-danger me-2"></i>
+                                    <strong>@key.KeyName</strong>
+                                </td>
+                                <td>@key.KeyLocation</td>
+                                <td>
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle"></i> NOT TAKEN
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
+                                        <i class="bi bi-person-check"></i>
+                                        @(authorizedPersons.Any() ? string.Join(", ", authorizedPersons) : "--")
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
                         <tr>
                             <td colspan="4" class="text-center py-5">
                                 <i class="bi bi-check-circle display-1 text-success"></i>
@@ -110,37 +152,80 @@
                                 </p>
                             </td>
                         </tr>
-                    `);
-                    return;
-                }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-                data.forEach(item => {
-                    tbody.append(`
-                        <tr class="table-danger">
-                            <td>
-                                <i class="bi bi-key-fill text-danger me-2"></i>
-                                <strong>${item.keyName}</strong>
-                            </td>
-                            <td>${item.keyLocation}</td>
-                            <td>
-                                <span class="badge bg-danger">
-                                    <i class="bi bi-x-circle"></i> NOT TAKEN
-                                </span>
-                            </td>
-                            <td>
-                                <span class="text-muted">
-                                    <i class="bi bi-person-check"></i>
-                                    ${item.authorizedPersons}
-                                </span>
-                            </td>
+<!-- Yesterday's NOT RETURNED Section (Expandable) -->
+@if (notReturnedYesterdayCount > 0)
+{
+    <div class="card border-danger border-2 shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar-minus"></i>
+                Keys NOT Returned Yesterday (@yesterday.ToString("dd MMM yyyy"))
+                <span class="badge bg-white text-danger float-end">@notReturnedYesterdayCount</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th><i class="bi bi-key"></i> Key Name</th>
+                            <th><i class="bi bi-geo-alt"></i> Location</th>
+                            <th><i class="bi bi-exclamation-triangle"></i> Status</th>
+                            <th><i class="bi bi-people"></i> Authorized Persons</th>
+                            <th>Action</th>
                         </tr>
-                    `);
-                });
-            });
-        }
+                    </thead>
+                    <tbody>
+                        @foreach (var key in notReturnedYesterdayKeys)
+                        {
+                            var authorizedPersons = ViewContext.HttpContext
+                            .RequestServices
+                            .GetService<ApplicationDbContext>()
+                            .KeyAuthorizations
+                            .Where(a => a.KeyEnroll == key.EnrollNumber)
+                            .Join(ViewContext.HttpContext.RequestServices
+                            .GetService<ApplicationDbContext>().EmployeeMasters,
+                            ka => ka.EmpEnroll,
+                            em => em.EnrollNumber,
+                            (ka, em) => em.FullName)
+                            .ToList();
 
-        $(document).ready(function() {
-            loadReport();
-        });
-    </script>
+                            <tr class="table-danger">
+                                <td>
+                                    <i class="bi bi-key-fill text-danger me-2"></i>
+                                    <strong>@key.KeyName</strong>
+                                </td>
+                                <td>@key.KeyLocation</td>
+                                <td>
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-arrow-return-left"></i> NOT RETURNED
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
+                                        <i class="bi bi-person-check"></i>
+                                        @(authorizedPersons.Any() ? string.Join(", ", authorizedPersons) : "--")
+                                    </span>
+                                </td>
+                                <td>
+                                    <a asp-action="EveningKeysNotReturned"
+                                       asp-route-date="@yesterday.ToString("yyyy-MM-dd")"
+                                       class="btn btn-sm btn-outline-danger">
+                                        View Yesterday Report
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 }

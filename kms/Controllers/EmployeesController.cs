@@ -12,7 +12,29 @@ namespace kms.Controllers
         {
             _context = context;
         }
+        // Helper: Load departments into ViewBag
+        // Called by Create and Edit GET methods
+        // =============================================
+        private void LoadDepartments()
+        {
+            // All distinct departments already in database
+            var departments = _context.EmployeeMasters
+                .Where(e => e.Department != null && e.Department != "")
+                .Select(e => e.Department)
+                .Distinct()
+                .OrderBy(d => d)
+                .ToList();
 
+            // Count active employees per department (for sidebar)
+            var deptCounts = _context.EmployeeMasters
+                .Where(e => e.IsActive == true && e.Department != null)
+                .GroupBy(e => e.Department)
+                .Select(g => new { Department = g.Key, Count = g.Count() })
+                .ToDictionary(x => x.Department, x => x.Count);
+
+            ViewBag.Departments = departments;
+            ViewBag.DeptCounts = deptCounts;
+        }
         // GET: Employees
         public async Task<IActionResult> Index()
         {
@@ -27,6 +49,7 @@ namespace kms.Controllers
         // GET: Employees/Create
         public IActionResult Create()
         {
+            LoadDepartments();
             return View();
         }
 
@@ -44,6 +67,7 @@ namespace kms.Controllers
                 TempData["Success"] = "Employee created successfully!";
                 return RedirectToAction(nameof(Index));
             }
+            LoadDepartments();
             return View(employee);
         }
 
@@ -57,6 +81,7 @@ namespace kms.Controllers
             if (employee == null)
                 return NotFound();
 
+            LoadDepartments();
             return View(employee);
         }
 
@@ -84,6 +109,7 @@ namespace kms.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            LoadDepartments();
             return View(employee);
         }
 

@@ -1,6 +1,8 @@
 ﻿@model kms.Models.EmployeeMaster
 @{
     ViewData["Title"] = "Create Employee";
+    var departments = ViewBag.Departments as List<string> ?? new List<string>();
+    var deptCounts = ViewBag.DeptCounts as Dictionary<string, int> ?? new Dictionary<string, int>();
 }
 
 <div class="row mb-4">
@@ -39,13 +41,63 @@
                                placeholder="e.g. John Doe" />
                         <span asp-validation-for="FullName" class="text-danger"></span>
                     </div>
-
                     <div class="mb-4">
-                        <label asp-for="Department" class="form-label fw-bold">
+                        <label class="form-label fw-bold">
                             <i class="bi bi-building"></i> Department
                         </label>
-                        <input asp-for="Department" class="form-control"
-                               placeholder="e.g. IT" />
+
+                        @if (departments.Any())
+                        {
+                            <!-- Toggle buttons -->
+                            <div class="mb-2">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button"
+                                            class="btn btn-outline-primary active"
+                                            id="btnExisting"
+                                            onclick="showExisting()">
+                                        <i class="bi bi-list-ul"></i> Select Existing
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-success"
+                                            id="btnNew"
+                                            onclick="showNew()">
+                                        <i class="bi bi-plus-circle"></i> Add New
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Existing dropdown -->
+                            <div id="existingDept">
+                                <select class="form-select"
+                                        id="deptSelect"
+                                        onchange="syncDept(this.value)">
+                                    <option value="">-- Select Department --</option>
+                                    @foreach (var dept in departments)
+                                    {
+                                        <option value="@dept">@dept</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- New department input -->
+                            <div id="newDept" style="display:none;">
+                                <input type="text"
+                                       class="form-control"
+                                       id="deptNewInput"
+                                       placeholder="Type new department name..."
+                                       oninput="syncDept(this.value)" />
+                            </div>
+
+                            <!-- Hidden input that submits the value -->
+                            <input type="hidden" asp-for="Department" id="deptHidden" />
+                        }
+                        else
+                        {
+                            <input asp-for="Department"
+                                   class="form-control"
+                                   placeholder="e.g. IT" />
+                        }
+
                         <span asp-validation-for="Department" class="text-danger"></span>
                     </div>
 
@@ -82,4 +134,31 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script>
+        function syncDept(value) {
+            document.getElementById('deptHidden').value = value;
+        }
+        function showExisting() {
+            document.getElementById('existingDept').style.display = 'block';
+            document.getElementById('newDept').style.display = 'none';
+            document.getElementById('btnExisting').classList.add('active');
+            document.getElementById('btnNew').classList.remove('active');
+            var sel = document.getElementById('deptSelect');
+            syncDept(sel ? sel.value : '');
+        }
+        function showNew() {
+            document.getElementById('existingDept').style.display = 'none';
+            document.getElementById('newDept').style.display = 'block';
+            document.getElementById('btnNew').classList.add('active');
+            document.getElementById('btnExisting').classList.remove('active');
+            document.getElementById('deptNewInput').value = '';
+            syncDept('');
+        }
+        function selectDept(name) {
+            showExisting();
+            var sel = document.getElementById('deptSelect');
+            if (sel) { sel.value = name; syncDept(name); }
+        }
+    </script>
 }
