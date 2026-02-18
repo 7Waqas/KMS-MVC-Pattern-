@@ -10,8 +10,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Key Management System</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
     <style>
         @@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -23,113 +25,38 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #062d66 0%, #064e2c 100%);
+            background: radial-gradient(circle at 30% 20%, #0f3c78, #02142b 70%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
             overflow: hidden;
+            position: relative;
         }
 
-        /* Animated Background Particles */
-        .particles {
+        /* ===== Canvas ===== */
+        #networkCanvas {
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden;
         }
 
-        .particle {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            animation: float 30s infinite ease-in-out;
-        }
-
-            .particle:nth-child(1) {
-                left: 10%;
-                animation-delay: 0s;
-            }
-
-            .particle:nth-child(2) {
-                left: 20%;
-                animation-delay: 2s;
-                width: 30px;
-                height: 30px;
-            }
-
-            .particle:nth-child(3) {
-                left: 30%;
-                animation-delay: 4s;
-            }
-
-            .particle:nth-child(4) {
-                left: 40%;
-                animation-delay: 6s;
-                width: 15px;
-                height: 15px;
-            }
-
-            .particle:nth-child(5) {
-                left: 50%;
-                animation-delay: 8s;
-            }
-
-            .particle:nth-child(6) {
-                left: 60%;
-                animation-delay: 10s;
-                width: 25px;
-                height: 25px;
-            }
-
-            .particle:nth-child(7) {
-                left: 70%;
-                animation-delay: 12s;
-            }
-
-            .particle:nth-child(8) {
-                left: 80%;
-                animation-delay: 14s;
-                width: 18px;
-                height: 18px;
-            }
-
-        @@keyframes float {
-            0%, 100% {
-                transform: translateY(0) rotate(0deg);
-                opacity: 0;
-            }
-
-            10% {
-                opacity: 1;
-            }
-
-            90% {
-                opacity: 1;
-            }
-
-            100% {
-                transform: translateY(-100vh) rotate(360deg);
-                opacity: 0;
-            }
-        }
-
+        /* ===== Login Card ===== */
         .login-container {
+            max-width: 600px;
             width: 100%;
-            max-width: 420px;
             padding: 20px;
             position: relative;
             z-index: 10;
-            animation: slideUp 0.8s ease-out;
+            animation: fadeIn 1s ease;
         }
 
-        @@keyframes slideUp {
+        @@keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(50px);
+                transform: translateY(40px);
             }
 
             to {
@@ -139,509 +66,276 @@
         }
 
         .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(25px);
             border-radius: 25px;
-            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 50px rgba(0,180,255,0.3);
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .login-header {
-            background: linear-gradient(135deg, #062d66 0%, #064e2c 100%);
-            padding: 30px 20px 25px;
+            background: linear-gradient(135deg,#0f3c78,#032b4d);
+            padding: 30px 20px;
             text-align: center;
             color: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-            .login-header::before {
-                content: '';
-                position: absolute;
-                top: -50%;
-                left: -50%;
-                width: 200%;
-                height: 200%;
-                background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-                animation: pulse 4s ease-in-out infinite;
-            }
-
-        @@keyframes pulse {
-            0%, 100% {
-                transform: scale(1) rotate(0deg);
-            }
-
-            50% {
-                transform: scale(1.1) rotate(180deg);
-            }
-        }
-
-        .logo-wrapper {
-            position: relative;
-            margin-bottom: 20px;
         }
 
         .logo-icon {
-            font-size: 40px;
-            animation: bounce 2s ease-in-out infinite;
-            position: relative;
-            z-index: 2;
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+            font-size: 45px;
+            animation: pulse 2s infinite;
         }
 
-        @@keyframes bounce {
-            0%, 100% {
-                transform: translateY(0);
+        @@keyframes pulse {
+            0% {
+                transform: scale(1);
             }
 
             50% {
-                transform: translateY(-15px);
-            }
-        }
-
-        .logo-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 85px;
-            height: 85px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            animation: rotate 3s linear infinite;
-        }
-
-        @@keyframes rotate {
-            from {
-                transform: translate(-50%, -50%) rotate(0deg);
+                transform: scale(1.1);
             }
 
-            to {
-                transform: translate(-50%, -50%) rotate(360deg);
+            100% {
+                transform: scale(1);
             }
-        }
-
-        .login-header h3 {
-            font-weight: 700;
-            margin-bottom: 8px;
-            font-size: 28px;
-            position: relative;
-            z-index: 2;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .login-header p {
-            font-size: 14px;
-            position: relative;
-            z-index: 2;
-            opacity: 0.9;
         }
 
         .login-body {
             padding: 30px 25px;
         }
 
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-        }
-
-            .form-label i {
-                margin-right: 8px;
-                color: #667eea;
-            }
-
-            .input-wrapper {
+        .input-wrapper {
             margin-bottom: 18px;
         }
 
         .input-group {
-            border: 2px solid #e0e0e0;
+            border: 2px solid #d0d0d0;
             border-radius: 12px;
             overflow: hidden;
-            transition: all 0.3s ease;
-            background: white;
+            transition: 0.3s;
         }
 
             .input-group:focus-within {
-                border-color: #667eea;
-                box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-                transform: translateY(-2px);
+                border-color: #0f3c78;
+                box-shadow: 0 0 10px rgba(0,180,255,0.3);
+            }
+
+        .form-control {
+            border: none;
+            padding: 12px;
+        }
+
+            .form-control:focus {
+                box-shadow: none;
             }
 
         .input-group-text {
             background: transparent;
             border: none;
-            padding: 12px 15px;
-            color: #667eea;
-        }
-
-        .form-control {
-            border: none;
-            padding: 12px 15px;
-            font-size: 15px;
-            background: transparent;
-        }
-
-            .form-control:focus {
-                box-shadow: none;
-                background: transparent;
-            }
-
-            .form-control::placeholder {
-                color: #bbb;
-            }
-
-        .form-check {
-            margin-bottom: 25px;
-        }
-
-        .form-check-input {
-            width: 20px;
-            height: 20px;
-            margin-top: 0;
-            cursor: pointer;
-            border: 2px solid #d0d0d0;
-        }
-
-            .form-check-input:checked {
-                background-color: #667eea;
-                border-color: #667eea;
-            }
-
-        .form-check-label {
-            margin-left: 8px;
-            cursor: pointer;
-            color: #666;
-            font-size: 14px;
+            color: #0f3c78;
         }
 
         .btn-login {
-            background: linear-gradient(135deg, #062d66 0%, #064e2c 100%);
+            background: linear-gradient(135deg,#0f3c78,#02142b);
             border: none;
-            padding: 16px;
+            padding: 14px;
             font-weight: 600;
-            font-size: 16px;
             border-radius: 12px;
             color: white;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: 0.3s;
         }
-
-            .btn-login::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                transition: left 0.5s;
-            }
-
-            .btn-login:hover::before {
-                left: 100%;
-            }
 
             .btn-login:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+                transform: translateY(-2px);
+                box-shadow: 0 0 20px rgba(0,180,255,0.6);
             }
-
-            .btn-login:active {
-                transform: translateY(-1px);
-            }
-
-        .alert {
-            border-radius: 12px;
-            border: none;
-            animation: slideDown 0.5s ease-out;
-            margin-bottom: 20px;
-        }
-
-        @@keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .alert-success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-
-        .alert-danger {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-            color: white;
-        }
 
         .footer-info {
             text-align: center;
             margin-top: 15px;
             padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid #ddd;
         }
-
-            .footer-info small {
-                color: #999;
-                font-size: 13px;
-            }
 
         .copyright {
             text-align: center;
-            margin-top: 30px;
-            animation: fadeIn 1s ease-out 0.5s both;
+            margin-top: 20px;
+            position: relative;
+            z-index: 10;
         }
 
-        @@keyframes fadeIn {
-            from {
-                opacity: 0;
+            .copyright small {
+                color: rgba(255,255,255,0.8);
             }
 
-            to {
-                opacity: 1;
-            }
-        }
-
-        .copyright small {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 13px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }
-
-        /* Password Toggle */
         .password-toggle {
             position: absolute;
             right: 15px;
             top: 50%;
             transform: translateY(-50%);
             cursor: pointer;
-            color: #999;
-            z-index: 10;
-            transition: color 0.3s ease;
-        }
-
-            .password-toggle:hover {
-                color: #667eea;
-            }
-
-        /* Loading Animation */
-        .btn-login.loading {
-            pointer-events: none;
-        }
-
-            .btn-login.loading::after {
-                content: '';
-                position: absolute;
-                width: 16px;
-                height: 16px;
-                top: 50%;
-                left: 50%;
-                margin-left: -8px;
-                margin-top: -8px;
-                border: 2px solid rgba(255,255,255,0.3);
-                border-top-color: white;
-                border-radius: 50%;
-                animation: spin 0.6s linear infinite;
-            }
-
-        @@keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Validation */
-        .text-danger {
-            font-size: 12px;
-            margin-top: 5px;
-            display: block;
-            color: #f45c43;
         }
     </style>
 </head>
+
 <body>
-    <!-- Animated Background Particles -->
-    <div class="particles">
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-    </div>
+
+    <canvas id="networkCanvas"></canvas>
 
     <div class="login-container">
         <div class="login-card">
-            <!-- Header -->
             <div class="login-header">
-                <div class="logo-wrapper">
-                    <div class="logo-ring"></div>
-                    <i class="bi bi-key-fill logo-icon"></i>
-                </div>
-                <h3>Key Management System</h3>
-                <p>Secure Administrator Access Portal</p>
+                <i class="bi bi-shield-lock-fill logo-icon"></i>
+                <h4 class="mt-2">MoD Key Management System</h4>
+                <small>Secure Administrator Access</small>
             </div>
 
-            <!-- Body -->
             <div class="login-body">
-
-                <!-- Success Message -->
-                @if (TempData["Success"] != null)
-                {
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        @TempData["Success"]
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-                    </div>
-                }
-
-                <!-- Error Summary -->
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-
-                <!-- Login Form -->
-                <form asp-action="Login" asp-controller="Account" method="post" id="loginForm">
+                <form asp-action="Login" asp-controller="Account" method="post">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
 
-                    <!-- Username -->
                     <div class="input-wrapper">
-                        <label asp-for="Username" class="form-label">
-                            <i class="bi bi-person-circle"></i> Username
-                        </label>
+                        <label asp-for="Username">Username</label>
                         <div class="input-group">
-                            <span class="input-group-text">
-                                <i class="bi bi-person"></i>
-                            </span>
-                            <input asp-for="Username"
-                                   class="form-control"
-                                   placeholder="Enter your username"
-                                   autofocus />
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input asp-for="Username" class="form-control" />
                         </div>
-                        <span asp-validation-for="Username" class="text-danger"></span>
                     </div>
 
-                    <!-- Password -->
                     <div class="input-wrapper">
-                        <label asp-for="Password" class="form-label">
-                            <i class="bi bi-shield-lock"></i> Password
-                        </label>
-                        <div class="input-group" style="position: relative;">
-                            <span class="input-group-text">
-                                <i class="bi bi-lock-fill"></i>
-                            </span>
-                            <input asp-for="Password"
-                                   class="form-control"
-                                   id="passwordInput"
-                                   placeholder="Enter your password" />
-                            <i class="bi bi-eye password-toggle"
-                               id="togglePassword"
-                               onclick="togglePasswordVisibility()"></i>
+                        <label asp-for="Password">Password</label>
+                        <div class="input-group" style="position:relative;">
+                            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                            <input asp-for="Password" class="form-control" id="passwordInput" />
+                            <i class="bi bi-eye password-toggle" id="togglePassword"></i>
                         </div>
-                        <span asp-validation-for="Password" class="text-danger"></span>
                     </div>
 
-                    <!-- Remember Me -->
-                    <div class="form-check">
-                        <input asp-for="RememberMe" class="form-check-input" type="checkbox" id="rememberMe" />
-                        <label asp-for="RememberMe" class="form-check-label" for="rememberMe">
-                            Remember me for 30 days
-                        </label>
+                    <div class="form-check mb-3">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label">Remember me</label>
                     </div>
 
-                    <!-- Login Button -->
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg btn-login" id="loginBtn">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>
-                            Sign In Securely
+                        <button class="btn btn-login">
+                            <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
                         </button>
                     </div>
                 </form>
 
-                <!-- Footer Info -->
                 <div class="footer-info">
-                    <small>
-                        <i class="bi bi-shield-check me-1"></i>
-                        Authorized personnel only
-                        <br>
-                        Contact system administrator for access
-                    </small>
+                    <small>Authorized personnel only</small>
                 </div>
             </div>
         </div>
 
-        <!-- Copyright -->
         <div class="copyright">
-            <small>
-                <i class="bi bi-c-circle me-1"></i>
-                @DateTime.Now.Year Key Management System (MoD). All rights reserved.
-            </small>
+            <small>© @DateTime.Now.Year all rights reserved MoD IT Wing</small>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
-
     <script>
-        // Password Toggle
-        function togglePasswordVisibility() {
-            const passwordInput = document.getElementById('passwordInput');
-            const toggleIcon = document.getElementById('togglePassword');
+        /* Password toggle */
+        document.getElementById("togglePassword").addEventListener("click", function () {
+            const input = document.getElementById("passwordInput");
+            this.classList.toggle("bi-eye-slash");
+            input.type = input.type === "password" ? "text" : "password";
+        });
 
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.classList.remove('bi-eye');
-                toggleIcon.classList.add('bi-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                toggleIcon.classList.remove('bi-eye-slash');
-                toggleIcon.classList.add('bi-eye');
+        /* ===== Neural Network Animation ===== */
+        const canvas = document.getElementById("networkCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        let mouse = { x:null, y:null };
+
+        window.addEventListener("mousemove", e => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random()*canvas.width;
+                this.y = Math.random()*canvas.height;
+                this.speedX = (Math.random()-0.5)*0.6;
+                this.speedY = (Math.random()-0.5)*0.6;
+                this.size = 4;
+
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if(this.x<0||this.x>canvas.width) this.speedX*=-1;
+                if(this.y<0||this.y>canvas.height) this.speedY*=-1;
+            }
+
+            draw() {
+                ctx.fillStyle="rgba(0,200,255,0.8)";
+                ctx.shadowBlur=10;
+                ctx.shadowColor="rgba(0,200,255,0.8)";
+                ctx.beginPath();
+                ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+                ctx.fill();
+                ctx.shadowBlur=0;
             }
         }
 
-        // Loading Animation on Submit
-        document.getElementById('loginForm').addEventListener('submit', function() {
-            const btn = document.getElementById('loginBtn');
-            btn.classList.add('loading');
-            btn.innerHTML = '<span style="opacity:0">Loading...</span>';
+        function init(){
+            particles=[];
+            for(let i=0;i<100;i++){
+                particles.push(new Particle());
+            }
+        }
+
+        function connect(){
+            for(let a=0;a<particles.length;a++){
+                for(let b=a;b<particles.length;b++){
+                    let dx=particles[a].x-particles[b].x;
+                    let dy=particles[a].y-particles[b].y;
+                    let dist=dx*dx+dy*dy;
+                    if(dist<9000){
+                        ctx.strokeStyle="rgba(0,200,255,0.15)";
+                        ctx.lineWidth=1;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x,particles[a].y);
+                        ctx.lineTo(particles[b].x,particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+
+                // mouse interaction
+                let dx=particles[a].x-mouse.x;
+                let dy=particles[a].y-mouse.y;
+                let dist=dx*dx+dy*dy;
+                if(dist<15000){
+                    ctx.strokeStyle="rgba(0,255,255,0.4)";
+                    ctx.beginPath();
+                    ctx.moveTo(particles[a].x,particles[a].y);
+                    ctx.lineTo(mouse.x,mouse.y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function animate(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            particles.forEach(p=>{p.update();p.draw();});
+            connect();
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener("resize",()=>{
+            canvas.width=window.innerWidth;
+            canvas.height=window.innerHeight;
+            init();
         });
 
-        // Input Focus Animations
-        document.querySelectorAll('.form-control').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.style.transform = 'scale(1.02)';
-            });
-
-            input.addEventListener('blur', function() {
-                this.parentElement.style.transform = 'scale(1)';
-            });
-        });
-
-        // Auto-dismiss alerts after 5 seconds
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
+        init();
+        animate();
     </script>
+
 </body>
 </html>
