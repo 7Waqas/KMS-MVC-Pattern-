@@ -1,0 +1,647 @@
+﻿@model kms.Models.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "Admin Login";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Key Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        @@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #062d66 0%, #064e2c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated Background Particles */
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+        }
+
+            .particle:nth-child(1) {
+                left: 10%;
+                animation-delay: 0s;
+            }
+
+            .particle:nth-child(2) {
+                left: 20%;
+                animation-delay: 2s;
+                width: 30px;
+                height: 30px;
+            }
+
+            .particle:nth-child(3) {
+                left: 30%;
+                animation-delay: 4s;
+            }
+
+            .particle:nth-child(4) {
+                left: 40%;
+                animation-delay: 6s;
+                width: 15px;
+                height: 15px;
+            }
+
+            .particle:nth-child(5) {
+                left: 50%;
+                animation-delay: 8s;
+            }
+
+            .particle:nth-child(6) {
+                left: 60%;
+                animation-delay: 10s;
+                width: 25px;
+                height: 25px;
+            }
+
+            .particle:nth-child(7) {
+                left: 70%;
+                animation-delay: 12s;
+            }
+
+            .particle:nth-child(8) {
+                left: 80%;
+                animation-delay: 14s;
+                width: 18px;
+                height: 18px;
+            }
+
+        @@keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @@keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #062d66 0%, #064e2c 100%);
+            padding: 30px 20px 25px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+            .login-header::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+                animation: pulse 4s ease-in-out infinite;
+            }
+
+        @@keyframes pulse {
+            0%, 100% {
+                transform: scale(1) rotate(0deg);
+            }
+
+            50% {
+                transform: scale(1.1) rotate(180deg);
+            }
+        }
+
+        .logo-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .logo-icon {
+            font-size: 40px;
+            animation: bounce 2s ease-in-out infinite;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+        }
+
+        @@keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .logo-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85px;
+            height: 85px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            animation: rotate 3s linear infinite;
+        }
+
+        @@keyframes rotate {
+            from {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        .login-header h3 {
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 28px;
+            position: relative;
+            z-index: 2;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .login-header p {
+            font-size: 14px;
+            position: relative;
+            z-index: 2;
+            opacity: 0.9;
+        }
+
+        .login-body {
+            padding: 30px 25px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+
+            .form-label i {
+                margin-right: 8px;
+                color: #667eea;
+            }
+
+            .input-wrapper {
+            margin-bottom: 18px;
+        }
+
+        .input-group {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+            .input-group:focus-within {
+                border-color: #667eea;
+                box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+                transform: translateY(-2px);
+            }
+
+        .input-group-text {
+            background: transparent;
+            border: none;
+            padding: 12px 15px;
+            color: #667eea;
+        }
+
+        .form-control {
+            border: none;
+            padding: 12px 15px;
+            font-size: 15px;
+            background: transparent;
+        }
+
+            .form-control:focus {
+                box-shadow: none;
+                background: transparent;
+            }
+
+            .form-control::placeholder {
+                color: #bbb;
+            }
+
+        .form-check {
+            margin-bottom: 25px;
+        }
+
+        .form-check-input {
+            width: 20px;
+            height: 20px;
+            margin-top: 0;
+            cursor: pointer;
+            border: 2px solid #d0d0d0;
+        }
+
+            .form-check-input:checked {
+                background-color: #667eea;
+                border-color: #667eea;
+            }
+
+        .form-check-label {
+            margin-left: 8px;
+            cursor: pointer;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #062d66 0%, #064e2c 100%);
+            border: none;
+            padding: 16px;
+            font-weight: 600;
+            font-size: 16px;
+            border-radius: 12px;
+            color: white;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+            .btn-login::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                transition: left 0.5s;
+            }
+
+            .btn-login:hover::before {
+                left: 100%;
+            }
+
+            .btn-login:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            }
+
+            .btn-login:active {
+                transform: translateY(-1px);
+            }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            animation: slideDown 0.5s ease-out;
+            margin-bottom: 20px;
+        }
+
+        @@keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+
+        .footer-info {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+            .footer-info small {
+                color: #999;
+                font-size: 13px;
+            }
+
+        .copyright {
+            text-align: center;
+            margin-top: 30px;
+            animation: fadeIn 1s ease-out 0.5s both;
+        }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .copyright small {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* Password Toggle */
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #999;
+            z-index: 10;
+            transition: color 0.3s ease;
+        }
+
+            .password-toggle:hover {
+                color: #667eea;
+            }
+
+        /* Loading Animation */
+        .btn-login.loading {
+            pointer-events: none;
+        }
+
+            .btn-login.loading::after {
+                content: '';
+                position: absolute;
+                width: 16px;
+                height: 16px;
+                top: 50%;
+                left: 50%;
+                margin-left: -8px;
+                margin-top: -8px;
+                border: 2px solid rgba(255,255,255,0.3);
+                border-top-color: white;
+                border-radius: 50%;
+                animation: spin 0.6s linear infinite;
+            }
+
+        @@keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Validation */
+        .text-danger {
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+            color: #f45c43;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background Particles -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <!-- Header -->
+            <div class="login-header">
+                <div class="logo-wrapper">
+                    <div class="logo-ring"></div>
+                    <i class="bi bi-key-fill logo-icon"></i>
+                </div>
+                <h3>Key Management System</h3>
+                <p>Secure Administrator Access Portal</p>
+            </div>
+
+            <!-- Body -->
+            <div class="login-body">
+
+                <!-- Success Message -->
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        @TempData["Success"]
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                <!-- Error Summary -->
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                <!-- Login Form -->
+                <form asp-action="Login" asp-controller="Account" method="post" id="loginForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+                    <!-- Username -->
+                    <div class="input-wrapper">
+                        <label asp-for="Username" class="form-label">
+                            <i class="bi bi-person-circle"></i> Username
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-person"></i>
+                            </span>
+                            <input asp-for="Username"
+                                   class="form-control"
+                                   placeholder="Enter your username"
+                                   autofocus />
+                        </div>
+                        <span asp-validation-for="Username" class="text-danger"></span>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="input-wrapper">
+                        <label asp-for="Password" class="form-label">
+                            <i class="bi bi-shield-lock"></i> Password
+                        </label>
+                        <div class="input-group" style="position: relative;">
+                            <span class="input-group-text">
+                                <i class="bi bi-lock-fill"></i>
+                            </span>
+                            <input asp-for="Password"
+                                   class="form-control"
+                                   id="passwordInput"
+                                   placeholder="Enter your password" />
+                            <i class="bi bi-eye password-toggle"
+                               id="togglePassword"
+                               onclick="togglePasswordVisibility()"></i>
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <!-- Remember Me -->
+                    <div class="form-check">
+                        <input asp-for="RememberMe" class="form-check-input" type="checkbox" id="rememberMe" />
+                        <label asp-for="RememberMe" class="form-check-label" for="rememberMe">
+                            Remember me for 30 days
+                        </label>
+                    </div>
+
+                    <!-- Login Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg btn-login" id="loginBtn">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>
+                            Sign In Securely
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Footer Info -->
+                <div class="footer-info">
+                    <small>
+                        <i class="bi bi-shield-check me-1"></i>
+                        Authorized personnel only
+                        <br>
+                        Contact system administrator for access
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Copyright -->
+        <div class="copyright">
+            <small>
+                <i class="bi bi-c-circle me-1"></i>
+                @DateTime.Now.Year Key Management System (MoD). All rights reserved.
+            </small>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+
+    <script>
+        // Password Toggle
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('passwordInput');
+            const toggleIcon = document.getElementById('togglePassword');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+            }
+        }
+
+        // Loading Animation on Submit
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            const btn = document.getElementById('loginBtn');
+            btn.classList.add('loading');
+            btn.innerHTML = '<span style="opacity:0">Loading...</span>';
+        });
+
+        // Input Focus Animations
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+            });
+
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

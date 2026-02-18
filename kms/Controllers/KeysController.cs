@@ -1,10 +1,12 @@
 ﻿using kms.Models;
 using kms.Models.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace kms.Controllers
 {
+    [Authorize]
     public class KeysController : Controller
     {
         private readonly ApplicationDbContext _context;

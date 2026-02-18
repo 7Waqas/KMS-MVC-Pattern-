@@ -1,9 +1,27 @@
 ﻿using kms.Models;
 using kms.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ═══════════════════════════════════════════════════
+// ADD AUTHENTICATION SERVICE
+// ═══════════════════════════════════════════════════
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.Name = "KMS.Auth";
+    });
+
 
 // Add services to the container
 builder.Services.AddControllersWithViews()
@@ -239,7 +257,30 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+// ═══════════════════════════════════════════════════
+// ADD AUTHENTICATION & AUTHORIZATION MIDDLEWARE
+// Must be after UseRouting and before MapControllerRoute
+// ═══════════════════════════════════════════════════
+app.UseAuthentication();  
 app.UseAuthorization();
+
+
+// ═══════════════════════════════════════════════════
+// ROOT URL REDIRECT TO LOGIN
+// ═══════════════════════════════════════════════════
+app.MapGet("/", context =>
+{
+    if (context.User?.Identity?.IsAuthenticated == true)
+    {
+        context.Response.Redirect("/Home/Index");
+    }
+    else
+    {
+        context.Response.Redirect("/Account/Login");
+    }
+    return Task.CompletedTask;
+});
 
 // Map controllers
 app.MapControllerRoute(
