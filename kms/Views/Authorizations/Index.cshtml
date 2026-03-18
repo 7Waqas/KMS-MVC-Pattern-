@@ -1,7 +1,6 @@
 ﻿@model IEnumerable<dynamic>
 @{
     ViewData["Title"] = "Authorizations";
-    
 }
 
 <div class="row mb-4">
@@ -27,6 +26,12 @@
     </div>
 }
 
+<!-- Search bar -->
+<div class="mb-3">
+    <input type="text" id="tableSearch" class="form-control"
+           placeholder="&#128269; Search by key name, location, employee or department..." />
+</div>
+
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -46,7 +51,11 @@
                     {
                         @foreach (var auth in Model)
                         {
-                            <tr>
+                            <tr class="auth-row"
+                                data-key="@auth.KeyName.ToLower()"
+                                data-location="@(auth.KeyLocation?.ToLower() ?? "")"
+                                data-employee="@auth.EmployeeName.ToLower()"
+                                data-dept="@(auth.Department?.ToLower() ?? "")">
                                 <td>
                                     <i class="bi bi-key-fill text-primary me-2"></i>
                                     <strong>@auth.KeyName</strong>
@@ -57,7 +66,10 @@
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="avatar-circle bg-success text-white me-2">
+                                        <div style="width:32px;height:32px;border-radius:50%;
+                                            background:#198754;color:#fff;font-weight:bold;
+                                            display:flex;align-items:center;justify-content:center;
+                                            flex-shrink:0;margin-right:8px;font-size:0.9rem;">
                                             @auth.EmployeeName.Substring(0, 1)
                                         </div>
                                         <strong>@auth.EmployeeName</strong>
@@ -98,3 +110,29 @@
         </div>
     </div>
 </div>
+
+<div id="noTableResults" class="text-center py-4 text-muted d-none">
+    <i class="bi bi-search fs-1"></i>
+    <p class="mt-2">No results match your search</p>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#tableSearch').on('input', function () {
+                var q = $(this).val().toLowerCase().trim();
+                var visible = 0;
+                $('.auth-row').each(function () {
+                    var match = (q === '' ||
+                        ($(this).data('key')      || '').indexOf(q) !== -1 ||
+                        ($(this).data('location') || '').indexOf(q) !== -1 ||
+                        ($(this).data('employee') || '').indexOf(q) !== -1 ||
+                        ($(this).data('dept')     || '').indexOf(q) !== -1);
+                    $(this).toggleClass('d-none', !match);
+                    if (match) visible++;
+                });
+                $('#noTableResults').toggleClass('d-none', visible > 0 || $('.auth-row').length === 0);
+            });
+        });
+    </script>
+}

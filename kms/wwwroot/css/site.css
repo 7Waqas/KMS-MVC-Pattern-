@@ -220,6 +220,50 @@ footer {
         font-size: 0.9rem;
     }
 }
+@media print {
+
+    /* Hide UI */
+    nav,
+    .btn,
+    .card-header,
+    .card-footer,
+    form,
+    input,
+    a,
+    .alert {
+        display: none !important;
+    }
+
+    /* Remove card design */
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Table styling */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table, th, td {
+        border: 1px solid black !important;
+    }
+
+    th, td {
+        padding: 8px;
+        color: black !important;
+    }
+
+    th {
+        background-color: #eee !important;
+    }
+
+    /* Center title */
+    h1 {
+        text-align: center;
+    }
+}
 
 /* ============================================
    LOADING SPINNER

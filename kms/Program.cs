@@ -96,6 +96,8 @@ else
 //    options.UseSqlServer(
 //        builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddResponseCompression();
+
 // OpenAPI/Swagger configuration
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
@@ -253,7 +255,7 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
-
+app.UseResponseCompression();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
