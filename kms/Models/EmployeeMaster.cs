@@ -13,5 +13,5 @@ public partial class EmployeeMaster
 
     public string? Department { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 }

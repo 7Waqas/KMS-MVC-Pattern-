@@ -1,21 +1,21 @@
-﻿@model kms.Models.ViewModels.KeyAuthViewModel
+﻿@model kms.Models.ViewModels.EmployeeAuthViewModel
 @{
-    ViewData["Title"] = "Manage Authorizations";
+    ViewData["Title"] = "Manage Key Authorizations";
 }
 
 <div class="row mb-4">
     <div class="col-12">
         <h1 class="display-6 fw-bold">
             <i class="bi bi-shield-check text-info"></i>
-            Manage Authorizations for: <span class="text-primary">@Model.KeyName</span>
+            Key Authorizations for: <span class="text-success">@Model.EmployeeName</span>
         </h1>
-        <p class="text-muted">Select employees who are authorized to use this key</p>
+        <p class="text-muted">Select keys this employee is authorized to use</p>
     </div>
 </div>
 
-<form asp-action="UpdateAuthorizations" method="post">
+<form asp-action="UpdateAuthorizationsByEmployee" method="post">
     @Html.AntiForgeryToken()
-    <input type="hidden" name="keyEnroll" value="@ViewContext.HttpContext.Request.Query["keyEnroll"]" />
+    <input type="hidden" name="empEnroll" value="@Model.EmpEnroll" />
 
     <!-- Action Buttons TOP -->
     <div class="row mb-3">
@@ -34,7 +34,8 @@
                             <button type="submit" class="btn btn-success btn-lg">
                                 <i class="bi bi-check-circle"></i> Save Authorizations
                             </button>
-                            <a asp-action="Index" class="btn btn-secondary btn-lg">
+                            <a asp-controller="Employees" asp-action="Index"
+                                   class="btn btn-secondary btn-lg">
                                 <i class="bi bi-x-circle"></i> Cancel
                             </a>
                         </div>
@@ -45,46 +46,48 @@
     </div>
 
     <div class="row">
-        <!-- LEFT: Available Employees -->
+        <!-- LEFT: Available Keys -->
         <div class="col-md-6 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-light border-0">
                     <h5 class="mb-2" id="availableHeader">
-                        <i class="bi bi-people text-secondary"></i>
-                        Available Employees
+                        <i class="bi bi-key text-secondary"></i>
+                        Available Keys
                     </h5>
-                    <input type="text" id="employeeSearch" class="form-control form-control-sm"
-                           placeholder="&#128269; Search by name or department..." />
+                    <input type="text" id="keySearch" class="form-control form-control-sm"
+                           placeholder="&#128269; Search by key name or location..." />
                 </div>
                 <div class="card-body p-2" style="max-height: 550px; overflow-y: auto;">
-                    <div class="list-group" id="employeeList">
-                        @foreach (var employee in Model.AvailableEmployees)
+                    <div class="list-group" id="keyList">
+                        @foreach (var key in Model.AvailableKeys)
                         {
-                            var isAuthorized = Model.AuthorizedEmployeeIds.Contains(employee.EnrollNumber);
-                            <div class="list-group-item employee-item px-2 py-2"
-                                 data-name="@employee.FullName.ToLower()"
-                                 data-dept="@(employee.Department?.ToLower() ?? "")">
+                            var isAuthorized = Model.AuthorizedKeyEnrolls.Contains(key.EnrollNumber);
+                            <div class="list-group-item key-item px-2 py-2"
+                                 data-name="@key.KeyName.ToLower()"
+                                 data-location="@(key.KeyLocation?.ToLower() ?? "")">
                                 <div class="form-check mb-0">
-                                    <input class="form-check-input emp-checkbox"
+                                    <input class="form-check-input key-checkbox"
                                            type="checkbox"
-                                           name="employeeEnrollNumbers"
-                                           value="@employee.EnrollNumber"
-                                           id="emp_@employee.EnrollNumber"
-                                           data-name="@employee.FullName"
-                                           data-dept="@(employee.Department ?? "")"
+                                           name="keyEnrollNumbers"
+                                           value="@key.EnrollNumber"
+                                           id="key_@key.EnrollNumber"
+                                           data-name="@key.KeyName"
+                                           data-location="@(key.KeyLocation ?? "")"
                                     @(isAuthorized ? "checked" : "") />
-                                    <label class="form-check-label w-100" for="emp_@employee.EnrollNumber">
+                                    <label class="form-check-label w-100" for="key_@key.EnrollNumber">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div class="d-flex align-items-center">
                                                 <div style="width:32px;height:32px;border-radius:50%;
-                                                    background:#198754;color:#fff;font-weight:bold;
+                                                    background:#0d6efd;color:#fff;font-weight:bold;
                                                     display:flex;align-items:center;justify-content:center;
-                                                    flex-shrink:0;margin-right:8px;font-size:0.9rem;">
-                                                    @employee.FullName.Substring(0, 1).ToUpper()
+                                                    flex-shrink:0;margin-right:8px;font-size:0.85rem;">
+                                                    <i class="bi bi-key-fill" style="font-size:0.8rem;"></i>
                                                 </div>
                                                 <div>
-                                                    <strong>@employee.FullName</strong><br />
-                                                    <small class="text-muted">@employee.Department</small>
+                                                    <strong>@key.KeyName</strong><br />
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-geo-alt"></i> @key.KeyLocation
+                                                    </small>
                                                 </div>
                                             </div>
                                             <span class="badge bg-success authorized-badge @(isAuthorized ? "" : "d-none")">
@@ -96,31 +99,31 @@
                             </div>
                         }
                     </div>
-                    <div id="noEmployeeResults" class="text-center py-3 text-muted d-none">
-                        <i class="bi bi-search"></i> No employees match your search
+                    <div id="noKeyResults" class="text-center py-3 text-muted d-none">
+                        <i class="bi bi-search"></i> No keys match your search
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- RIGHT: Currently Authorized (built dynamically by JS) -->
+        <!-- RIGHT: Currently Authorized Keys -->
         <div class="col-md-6 mb-4">
-            <div class="card border-info border-2 shadow-sm h-100">
-                <div class="card-header bg-info bg-opacity-10 border-0">
-                    <h5 class="mb-2 text-info">
-                        <i class="bi bi-shield-check"></i>
-                        Currently Authorized (<span id="authorizedCount">0</span>)
+            <div class="card border-success border-2 shadow-sm h-100">
+                <div class="card-header bg-success bg-opacity-10 border-0">
+                    <h5 class="mb-2 text-success">
+                        <i class="bi bi-key-fill"></i>
+                        Authorized Keys (<span id="authorizedCount">0</span>)
                     </h5>
                     <input type="text" id="authorizedSearch" class="form-control form-control-sm"
-                           placeholder="&#128269; Search authorized employees..." />
+                           placeholder="&#128269; Search authorized keys..." />
                 </div>
                 <div class="card-body p-2" style="max-height: 550px; overflow-y: auto;">
                     <div class="list-group" id="authorizedList"></div>
                     <div id="emptyAuthorized" class="text-center py-5">
                         <i class="bi bi-exclamation-triangle display-1 text-warning"></i>
                         <p class="mt-3 text-muted">
-                            No employees authorized yet.<br />
-                            Select employees from the left panel.
+                            No keys authorized yet.<br />
+                            Select keys from the left panel.
                         </p>
                     </div>
                     <div id="noAuthorizedResults" class="text-center py-3 text-muted d-none">
@@ -148,7 +151,8 @@
                             <button type="submit" class="btn btn-success btn-lg">
                                 <i class="bi bi-check-circle"></i> Save Authorizations
                             </button>
-                            <a asp-action="Index" class="btn btn-secondary btn-lg">
+                            <a asp-controller="Employees" asp-action="Index"
+                                   class="btn btn-secondary btn-lg">
                                 <i class="bi bi-x-circle"></i> Cancel
                             </a>
                         </div>
@@ -163,12 +167,11 @@
     <script>
         $(document).ready(function () {
 
-            // ── Rebuild right panel from all checked checkboxes ──────────────────
             function rebuildAuthorizedPanel() {
                 var $list = $('#authorizedList');
                 $list.empty();
 
-                var $checked = $('.emp-checkbox:checked');
+                var $checked = $('.key-checkbox:checked');
 
                 if ($checked.length === 0) {
                     $('#emptyAuthorized').removeClass('d-none');
@@ -177,30 +180,31 @@
                     $('#emptyAuthorized').addClass('d-none');
                     $checked.each(function () {
                         var enrollNumber = $(this).val();
-                        var name = $(this).data('name') || '';
-                        var dept = $(this).data('dept') || '';
-                        var initial = name.charAt(0).toUpperCase();
+                        var name     = $(this).data('name') || '';
+                        var location = $(this).data('location') || '';
 
                         $list.append(
                             '<div class="list-group-item border-0 mb-2 bg-light authorized-row" ' +
-                                 'data-name="' + name.toLowerCase() + '" ' +
-                                 'data-dept="' + dept.toLowerCase() + '">' +
+                                 'data-name="'     + name.toLowerCase()     + '" ' +
+                                 'data-location="' + location.toLowerCase() + '">' +
                                 '<div class="d-flex align-items-center gap-2">' +
-                                    '<div style="width:36px;height:36px;border-radius:50%;background:#0dcaf0;' +
-                                                'color:#fff;font-weight:bold;display:flex;align-items:center;' +
-                                                'justify-content:center;flex-shrink:0;font-size:1rem;">' +
-                                        initial +
+                                    '<div style="width:36px;height:36px;border-radius:50%;background:#0d6efd;' +
+                                                'color:#fff;display:flex;align-items:center;' +
+                                                'justify-content:center;flex-shrink:0;">' +
+                                        '<i class="bi bi-key-fill" style="font-size:0.9rem;"></i>' +
                                     '</div>' +
                                     '<div class="flex-grow-1">' +
                                         '<strong>' + name + '</strong><br/>' +
-                                        '<small class="text-muted"><i class="bi bi-building"></i> ' + dept + '</small>' +
+                                        '<small class="text-muted">' +
+                                            '<i class="bi bi-geo-alt"></i> ' + location +
+                                        '</small>' +
                                     '</div>' +
                                     '<i class="bi bi-check-circle-fill text-success fs-5 me-1"></i>' +
                                     '<button type="button" ' +
                                             'class="btn btn-sm btn-outline-danger remove-authorized" ' +
                                             'data-enroll="' + enrollNumber + '" ' +
                                             'title="Remove authorization">' +
-                                        '<i class="bi bi-person-dash"></i> Remove' +
+                                        '<i class="bi bi-x-lg"></i> Remove' +
                                     '</button>' +
                                 '</div>' +
                             '</div>'
@@ -210,59 +214,53 @@
 
                 $('#authorizedCount').text($checked.length);
                 $('#availableHeader').html(
-                    '<i class="bi bi-people text-secondary"></i> Available Employees (' + $checked.length + ' selected)'
+                    '<i class="bi bi-key text-secondary"></i> Available Keys (' + $checked.length + ' selected)'
                 );
 
                 applyAuthorizedSearch();
             }
 
-            // ── Toggle green badge on left panel ─────────────────────────────────
             function updateBadge($cb) {
                 var $badge = $cb.closest('.form-check').find('.authorized-badge');
-                if ($cb.is(':checked')) {
-                    $badge.removeClass('d-none');
-                } else {
-                    $badge.addClass('d-none');
-                }
+                $cb.is(':checked') ? $badge.removeClass('d-none') : $badge.addClass('d-none');
             }
 
-            // ── Remove button on right panel ──────────────────────────────────────
+            // Remove from right panel → uncheck on left
             $(document).on('click', '.remove-authorized', function () {
                 var enroll = $(this).data('enroll');
-                var $cb = $('#emp_' + enroll);
+                var $cb = $('#key_' + enroll);
                 $cb.prop('checked', false);
                 updateBadge($cb);
                 rebuildAuthorizedPanel();
             });
 
-            // ── Checkbox change handler ───────────────────────────────────────────
-            $(document).on('change', '.emp-checkbox', function () {
+            $(document).on('change', '.key-checkbox', function () {
                 updateBadge($(this));
                 rebuildAuthorizedPanel();
             });
 
-            // ── Left panel: live search by name or department ─────────────────────
-            $('#employeeSearch').on('input', function () {
+            // Left panel search
+            $('#keySearch').on('input', function () {
                 var q = $(this).val().toLowerCase().trim();
                 var visible = 0;
-                $('.employee-item').each(function () {
-                    var name = $(this).data('name') || '';
-                    var dept = $(this).data('dept') || '';
-                    var match = (q === '' || name.indexOf(q) !== -1 || dept.indexOf(q) !== -1);
+                $('.key-item').each(function () {
+                    var name     = $(this).data('name') || '';
+                    var location = $(this).data('location') || '';
+                    var match = (q === '' || name.indexOf(q) !== -1 || location.indexOf(q) !== -1);
                     $(this).toggleClass('d-none', !match);
                     if (match) visible++;
                 });
-                $('#noEmployeeResults').toggleClass('d-none', visible > 0);
+                $('#noKeyResults').toggleClass('d-none', visible > 0);
             });
 
-            // ── Right panel: live search ──────────────────────────────────────────
+            // Right panel search
             function applyAuthorizedSearch() {
                 var q = $('#authorizedSearch').val().toLowerCase().trim();
                 var visible = 0;
                 $('.authorized-row').each(function () {
-                    var name = $(this).data('name') || '';
-                    var dept = $(this).data('dept') || '';
-                    var match = (q === '' || name.indexOf(q) !== -1 || dept.indexOf(q) !== -1);
+                    var name     = $(this).data('name') || '';
+                    var location = $(this).data('location') || '';
+                    var match = (q === '' || name.indexOf(q) !== -1 || location.indexOf(q) !== -1);
                     $(this).toggleClass('d-none', !match);
                     if (match) visible++;
                 });
@@ -272,8 +270,8 @@
 
             $('#authorizedSearch').on('input', applyAuthorizedSearch);
 
-            // ── Page load: init badges and build right panel ──────────────────────
-            $('.emp-checkbox').each(function () { updateBadge($(this)); });
+            // Init
+            $('.key-checkbox').each(function () { updateBadge($(this)); });
             rebuildAuthorizedPanel();
         });
     </script>

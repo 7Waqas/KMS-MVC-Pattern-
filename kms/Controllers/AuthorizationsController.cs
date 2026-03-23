@@ -124,6 +124,62 @@ namespace kms.Controllers
 
             return RedirectToAction(nameof(Index));
         }
+        // GET: /Authorizations/ManageByEmployee?empEnroll=50
+        public IActionResult ManageByEmployee(int empEnroll)
+        {
+            var employee = _context.EmployeeMasters
+                                   .FirstOrDefault(e => e.EnrollNumber == empEnroll);
+            if (employee == null) return NotFound();
+
+            var allKeys = _context.KeyMasters
+                                  .Where(k => k.IsActive == true)
+                                  .OrderBy(k => k.KeyName)
+                                  .ToList();
+
+            var authorizedKeyEnrolls = _context.KeyAuthorizations
+                                               .Where(a => a.EmpEnroll == empEnroll)
+                                               .Select(a => a.KeyEnroll)
+                                               .ToList();
+
+            var vm = new EmployeeAuthViewModel
+            {
+                EmployeeName = employee.FullName,
+                EmpEnroll = empEnroll,
+                AvailableKeys = allKeys,
+                AuthorizedKeyEnrolls = authorizedKeyEnrolls
+            };
+
+            return View(vm);
+        }
+
+        // POST: /Authorizations/UpdateAuthorizationsByEmployee
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult UpdateAuthorizationsByEmployee(int empEnroll,
+                                                            List<int> keyEnrollNumbers)
+        {
+            var existing = _context.KeyAuthorizations
+                                   .Where(a => a.EmpEnroll == empEnroll)
+                                   .ToList();
+            _context.KeyAuthorizations.RemoveRange(existing);
+
+            if (keyEnrollNumbers != null && keyEnrollNumbers.Any())
+            {
+                foreach (var keyEnroll in keyEnrollNumbers)
+                {
+                    _context.KeyAuthorizations.Add(new KeyAuthorization
+                    {
+                        EmpEnroll = empEnroll,
+                        KeyEnroll = keyEnroll,
+                        AssignedDate = DateOnly.FromDateTime(DateTime.Today)
+                    });
+                }
+            }
+
+            _context.SaveChanges();
+            TempData["Success"] = "Key authorizations updated successfully.";
+            return RedirectToAction("Index", "Employees");
+        }
 
         // POST: Authorizations/Delete/5
         [HttpPost]

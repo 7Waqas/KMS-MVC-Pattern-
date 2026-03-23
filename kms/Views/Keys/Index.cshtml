@@ -27,9 +27,33 @@
 }
 
 <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" id="keySearch" class="form-control border-start-0 bg-light"
+                           placeholder="Search by enroll number, key name or location..." />
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Clear">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select id="statusFilter" class="form-select bg-light">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3 text-muted small" id="resultCount"></div>
+        </div>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="keyTable">
                 <thead class="table-dark">
                     <tr>
                         <th><i class="bi bi-hash"></i> Enroll Number</th>
@@ -72,15 +96,15 @@
                                 </td>
                                 <td class="text-center">
                                     <a asp-controller="Authorizations"
-                                       asp-action="Manage"
-                                       asp-route-keyEnroll="@key.EnrollNumber"
-                                       class="btn btn-sm btn-info me-1"
-                                       data-bs-toggle="tooltip"
-                                       title="Manage Authorizations">
+                                           asp-action="Manage"
+                                           asp-route-keyEnroll="@key.EnrollNumber"
+                                           class="btn btn-sm btn-info me-1"
+                                           data-bs-toggle="tooltip"
+                                           title="Manage Authorizations">
                                         <i class="bi bi-shield-check"></i>
                                     </a>
                                     <a asp-action="Edit" asp-route-id="@key.KeyId"
-                                       class="btn btn-sm btn-warning me-1">
+                                           class="btn btn-sm btn-warning me-1">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <form asp-action="Delete" asp-route-id="@key.KeyId"
@@ -106,6 +130,65 @@
                     }
                 </tbody>
             </table>
+            <div id="noResults" class="text-center py-5 d-none">
+                <i class="bi bi-search display-1 text-muted"></i>
+                <p class="mt-3 text-muted">No keys match your search</p>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        const searchInput  = document.getElementById('keySearch');
+        const statusFilter = document.getElementById('statusFilter');
+        const clearBtn     = document.getElementById('clearSearch');
+        const resultCount  = document.getElementById('resultCount');
+        const noResults    = document.getElementById('noResults');
+        const tbody        = document.querySelector('#keyTable tbody');
+
+        function filterTable() {
+            const query  = searchInput.value.toLowerCase().trim();
+            const status = statusFilter.value.toLowerCase();
+            const rows   = tbody.querySelectorAll('tr');
+            let visible  = 0;
+
+            rows.forEach(row => {
+                if (row.cells.length < 4) return; // skip empty-state row
+                const enroll   = row.cells[0].textContent.toLowerCase();
+                const keyName  = row.cells[1].textContent.toLowerCase();
+                const location = row.cells[2].textContent.toLowerCase();
+                const badge    = row.cells[3].textContent.toLowerCase().trim();
+
+                const matchesQuery  = !query  || enroll.includes(query) || keyName.includes(query) || location.includes(query);
+                const matchesStatus = !status || badge.includes(status);
+
+                if (matchesQuery && matchesStatus) {
+                    row.classList.remove('d-none');
+                    visible++;
+                } else {
+                    row.classList.add('d-none');
+                }
+            });
+
+            const total = rows.length;
+            resultCount.textContent = query || status
+                ? `Showing ${visible} of ${total} key${total !== 1 ? 's' : ''}`
+                : `${total} key${total !== 1 ? 's' : ''} total`;
+
+            noResults.classList.toggle('d-none', visible > 0);
+            tbody.classList.toggle('d-none', visible === 0);
+        }
+
+        searchInput.addEventListener('input', filterTable);
+        statusFilter.addEventListener('change', filterTable);
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            statusFilter.value = '';
+            filterTable();
+            searchInput.focus();
+        });
+
+        filterTable(); // init count on load
+    </script>
+}

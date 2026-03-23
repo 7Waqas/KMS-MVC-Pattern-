@@ -13,5 +13,5 @@ public partial class KeyMaster
 
     public string? KeyLocation { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 }
