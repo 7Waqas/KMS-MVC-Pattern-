@@ -145,12 +145,13 @@
                         <i class="bi bi-exclamation-circle-fill"></i>
                     </div>
                 </div>
-                <a asp-controller="Reports" asp-action="MorningKeysNotTaken"
-                   class="btn btn-sm btn-warning mt-2">
-                    View Details
-                </a>
-                <i class="bi bi-printer-fill text-warning print-icon"
-   onclick="window.open('@Url.Action("MorningKeysNotTaken","Reports")','_blank')">
+<a asp-controller="Reports" asp-action="MorningKeysNotTaken"
+   class="btn btn-sm btn-warning mt-2"
+   onclick="event.stopPropagation()">
+    View Details
+</a>
+<i class="bi bi-printer-fill text-warning print-icon"
+   onclick="event.stopPropagation(); window.open('@Url.Action("MorningKeysNotTaken","Reports")?print=true','_blank')">
 </i>
             </div>
         </div>
@@ -175,10 +176,9 @@
                    class="btn btn-sm btn-danger mt-2">
                     View Details
                 </a>
-                <i class="bi bi-printer-fill text-danger print-icon"
-   onclick="window.open('@Url.Action("EveningKeysNotReturned","Reports")','_blank')">
-</i>
-            </div>
+               <i class="bi bi-printer-fill text-danger print-icon"
+   onclick="event.stopPropagation(); window.open('@Url.Action("EveningKeysNotReturned","Reports")?print=true','_blank')">
+</i>      </div>
         </div>
     </div>
 </div>
