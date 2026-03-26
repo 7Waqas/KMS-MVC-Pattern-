@@ -17,6 +17,41 @@ namespace kms.Services
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
 
+            // Pull all today's ReportType==4 (activity) records once
+            var todayActivities = await _context.KeyReportData
+                .Where(r => r.ReportDate == today && r.ReportType == 4)
+                .Select(r => new
+                {
+                    r.Direction,
+                    r.ScanTime,
+                    r.AuthStatus
+                })
+                .ToListAsync();
+
+            // Hour slots 06 to 20
+            var hourSlots = Enumerable.Range(6, 15).ToList(); // 6,7,...,20
+
+            var hourlyKeyOut = hourSlots.Select(h =>
+                todayActivities.Count(r =>
+                    r.Direction != null &&
+                    r.Direction.Contains("OUT") &&
+                    TryParseHour(r.ScanTime) == h))
+                .ToList();
+
+            var hourlyKeyReturned = hourSlots.Select(h =>
+                todayActivities.Count(r =>
+                    r.Direction != null &&
+                    r.Direction.Contains("IN") &&
+                    TryParseHour(r.ScanTime) == h))
+                .ToList();
+
+            var hourlyUnauthorized = hourSlots.Select(h =>
+                todayActivities.Count(r =>
+                    r.AuthStatus != null &&
+                    r.AuthStatus.Contains("UNAUTHORIZED") &&
+                    TryParseHour(r.ScanTime) == h))
+                .ToList();
+
             var viewModel = new DashboardViewModel
             {
                 TotalKeys = await _context.KeyMasters
@@ -44,13 +79,11 @@ namespace kms.Services
                     .CountAsync(),
 
                 UnauthorizedAccessToday = await _context.KeyReportData
-                    .Where(r => r.ReportDate == today &&
-                                r.ReportType == 3)
+                    .Where(r => r.ReportDate == today && r.ReportType == 3)
                     .CountAsync(),
 
                 RecentActivities = await _context.KeyReportData
-                    .Where(r => r.ReportDate == today &&
-                                r.ReportType == 4)
+                    .Where(r => r.ReportDate == today && r.ReportType == 4)
                     .OrderByDescending(r => r.ScanTime)
                     .Take(10)
                     .Select(r => new RecentActivity
@@ -60,12 +93,25 @@ namespace kms.Services
                         Action = r.Direction ?? "",
                         Time = r.ScanTime ?? "",
                         IsUnauthorized = r.AuthStatus != null &&
-                                       r.AuthStatus.Contains("UNAUTHORIZED")
+                                         r.AuthStatus.Contains("UNAUTHORIZED")
                     })
-                    .ToListAsync()
+                    .ToListAsync(),
+
+                HourlyKeyOut = hourlyKeyOut,
+                HourlyKeyReturned = hourlyKeyReturned,
+                HourlyUnauthorized = hourlyUnauthorized
             };
 
             return viewModel;
+        }
+
+        // Safely parse hour from time strings like "08:45", "8:45 AM", "08:45:00"
+        private static int TryParseHour(string? timeStr)
+        {
+            if (string.IsNullOrWhiteSpace(timeStr)) return -1;
+            if (DateTime.TryParse(timeStr, out var dt)) return dt.Hour;
+            if (TimeSpan.TryParse(timeStr, out var ts)) return ts.Hours;
+            return -1;
         }
     }
 }

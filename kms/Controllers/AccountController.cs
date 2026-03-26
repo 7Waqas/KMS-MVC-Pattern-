@@ -14,7 +14,7 @@ namespace kms.Controllers
         // TODO: Change these to your secure values
         // =============================================
         private const string ADMIN_USERNAME = "admin";
-        private const string ADMIN_PASSWORD = "Admin@123";
+        private const string ADMIN_PASSWORD = "Pakistan@123";
 
         // =============================================
         // GET: /Account/Login

@@ -1,5 +1,6 @@
 ﻿using kms.Models;
 using kms.Models.ViewModels;
+using kms.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,43 @@ namespace kms.Controllers
         {
             return View();
         }
+        // =============================================
+        // REPORT 5: Hourly Drill-Down (Chart Click)
+        // =============================================
+        public async Task<IActionResult> HourlyDrillDown(DateOnly? date, int? hour)
+        {
+            var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
+            var selectedHour = hour ?? DateTime.Now.Hour;
+
+            var hourStart = $"{selectedHour:D2}:00:00";
+            var hourEnd = $"{selectedHour:D2}:59:59";
+
+            var data = await _context.KeyReportData
+                .Where(r => r.ReportDate.Year == selectedDate.Year &&
+                            r.ReportDate.Month == selectedDate.Month &&
+                            r.ReportDate.Day == selectedDate.Day &&
+                            r.ReportType == 4 &&
+                            string.Compare(r.ScanTime, hourStart) >= 0 &&
+                            string.Compare(r.ScanTime, hourEnd) <= 0)
+                .OrderBy(r => r.ScanTime)
+                .ToListAsync();
+
+            var viewModel = new ReportViewModel
+            {
+                SelectedDate = selectedDate,
+                ReportType = 4,
+                ReportTitle = $"Activity Detail — {selectedDate:dd MMM yyyy} at {selectedHour:D2}:00",
+                TotalRecords = data.Count
+            };
+
+            ViewBag.SelectedDate = selectedDate;
+            ViewBag.SelectedHour = selectedHour;
+            ViewBag.HourLabel = $"{selectedHour:D2}:00 – {selectedHour:D2}:59";
+            ViewBag.DrillData = data;
+
+            return View(viewModel);
+        }
+
 
         // =============================================
         // REPORT 1: Morning Keys NOT Taken

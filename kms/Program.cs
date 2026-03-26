@@ -198,58 +198,60 @@ if (builder.Configuration.GetValue<bool>("UseMockData"))
             var today = DateOnly.FromDateTime(DateTime.Today);
 
             context.KeyReportData.AddRange(
-                new KeyReportData
-                {
-                    ReportType = 2,
-                    ReportDate = today,
-                    KeyName = "key_IT",
-                    Status = "IN - Returned",
-                    ScanTime = "16:46:03",
-                    Employee = "Waqas",
-                    AuthorizedPersons = "Waqas, Hassan",
-                    AuthStatus = "Authorized"
-                },
-                new KeyReportData
-                {
-                    ReportType = 2,
-                    ReportDate = today,
-                    KeyName = "key_R&I",
-                    Status = "IN - Returned",
-                    ScanTime = "16:46:07",
-                    Employee = "Waqas",
-                    AuthorizedPersons = "Farukh",
-                    AuthStatus = "UNAUTHORIZED"
-                },
-                new KeyReportData
-                {
-                    ReportType = 4,
-                    ReportDate = today,
-                    KeyName = "key_IT",
-                    Direction = "IN - Evening",
-                    ScanTime = "16:46:03",
-                    Employee = "Waqas",
-                    AuthStatus = "Authorized"
-                },
-                new KeyReportData
-                {
-                    ReportType = 4,
-                    ReportDate = today,
-                    KeyName = "key_R&I",
-                    Direction = "IN - Evening",
-                    ScanTime = "16:46:07",
-                    Employee = "Waqas",
-                    AuthStatus = "UNAUTHORIZED"
-                }
+
+                // ── ReportType 1 (Morning taken) ──
+                new KeyReportData { ReportType = 1, ReportDate = today, KeyName = "key_IT", ScanTime = "08:15:00", Employee = "Waqas", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 1, ReportDate = today, KeyName = "key_R&I", ScanTime = "09:02:00", Employee = "Farukh", AuthStatus = "Authorized" },
+
+                // ── ReportType 2 (Evening returned) ──
+                new KeyReportData { ReportType = 2, ReportDate = today, KeyName = "key_IT", Status = "IN - Returned", ScanTime = "16:46:00", Employee = "Waqas", AuthorizedPersons = "Waqas, Hassan", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 2, ReportDate = today, KeyName = "key_R&I", Status = "IN - Returned", ScanTime = "16:46:07", Employee = "Waqas", AuthorizedPersons = "Farukh", AuthStatus = "UNAUTHORIZED" },
+
+                // ── ReportType 3 (Unauthorized log) ──
+                new KeyReportData { ReportType = 3, ReportDate = today, KeyName = "key_R&I", ScanTime = "11:30:00", Employee = "Waqas", AuthStatus = "UNAUTHORIZED" },
+                new KeyReportData { ReportType = 3, ReportDate = today, KeyName = "key_Admin", ScanTime = "14:10:00", Employee = "Hassan", AuthStatus = "UNAUTHORIZED" },
+
+                // ── ReportType 4 (Activity log for chart & recent table) ──
+
+                // 08:00 morning rush — keys going OUT
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_IT", Direction = "OUT - Morning", ScanTime = "08:05:00", Employee = "Waqas", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_Admin", Direction = "OUT - Morning", ScanTime = "08:15:00", Employee = "Hassan", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_R&I", Direction = "OUT - Morning", ScanTime = "08:45:00", Employee = "Farukh", AuthStatus = "Authorized" },
+
+                // 09:00 — more going OUT
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_IT", Direction = "OUT - Morning", ScanTime = "09:10:00", Employee = "Hassan", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_Admin", Direction = "OUT - Morning", ScanTime = "09:30:00", Employee = "Waqas", AuthStatus = "Authorized" },
+
+                // 11:00 — unauthorized spike
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_R&I", Direction = "OUT - Morning", ScanTime = "11:28:00", Employee = "Waqas", AuthStatus = "UNAUTHORIZED" },
+
+                // 12:00 — lunch returns
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_Admin", Direction = "IN - Return", ScanTime = "12:05:00", Employee = "Waqas", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_IT", Direction = "IN - Return", ScanTime = "12:20:00", Employee = "Waqas", AuthStatus = "Authorized" },
+
+                // 13:00 — out again after lunch
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_IT", Direction = "OUT - Morning", ScanTime = "13:05:00", Employee = "Waqas", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_Admin", Direction = "OUT - Morning", ScanTime = "13:40:00", Employee = "Hassan", AuthStatus = "Authorized" },
+
+                // 14:00 — another unauthorized
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_Admin", Direction = "OUT - Morning", ScanTime = "14:08:00", Employee = "Hassan", AuthStatus = "UNAUTHORIZED" },
+
+                // 16:00 — evening return spike
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_IT", Direction = "IN - Evening", ScanTime = "16:30:00", Employee = "Waqas", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_R&I", Direction = "IN - Evening", ScanTime = "16:46:03", Employee = "Farukh", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_Admin", Direction = "IN - Evening", ScanTime = "16:46:07", Employee = "Hassan", AuthStatus = "Authorized" },
+
+                // 17:00 — late returns
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_IT", Direction = "IN - Evening", ScanTime = "17:10:00", Employee = "Hassan", AuthStatus = "Authorized" },
+                new KeyReportData { ReportType = 4, ReportDate = today, KeyName = "key_Admin", Direction = "IN - Evening", ScanTime = "17:45:00", Employee = "Waqas", AuthStatus = "Authorized" }
             );
         }
 
         context.SaveChanges();
-
         Console.WriteLine("✅ Mock data seeded successfully!");
     }
 }
-
-// Configure middleware
+// Configure middleware 
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -264,7 +266,7 @@ app.UseRouting();
 // ADD AUTHENTICATION & AUTHORIZATION MIDDLEWARE
 // Must be after UseRouting and before MapControllerRoute
 // ═══════════════════════════════════════════════════
-app.UseAuthentication();  
+app.UseAuthentication();
 app.UseAuthorization();
 
 
