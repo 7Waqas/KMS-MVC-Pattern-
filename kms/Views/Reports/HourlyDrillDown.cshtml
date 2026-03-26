@@ -6,9 +6,12 @@
     var selDate   = ViewBag.SelectedDate is DateOnly d ? d : DateOnly.FromDateTime(DateTime.Today);
     var selHour   = (int)(ViewBag.SelectedHour ?? 0);
 
-    int totalOut          = data.Count(r => r.Direction != null && r.Direction.Contains("OUT"));
-    int totalIn           = data.Count(r => r.Direction != null && r.Direction.Contains("IN"));
-    int totalUnauthorized = data.Count(r => r.AuthStatus != null && r.AuthStatus.Contains("UNAUTHORIZED"));
+    int totalOut          = data.Where(r => r.Direction != null && r.Direction.Contains("OUT"))
+                            .Select(r => r.KeyName).Distinct().Count();
+int totalIn           = data.Where(r => r.Direction != null && r.Direction.Contains("IN"))
+                            .Select(r => r.KeyName).Distinct().Count();
+int totalUnauthorized = data.Where(r => r.AuthStatus != null && r.AuthStatus.Contains("UNAUTHORIZED"))
+                            .Select(r => r.KeyName).Distinct().Count();
 }
 
 <style>
@@ -69,7 +72,7 @@
 
     <!-- Hour navigation arrows -->
     <div class="col-auto d-flex align-items-center gap-2">
-        @if (selHour > 6)
+        @if (selHour > 0)
         {
             <a class="hour-nav-btn"
                asp-controller="Reports" asp-action="HourlyDrillDown"
@@ -80,7 +83,7 @@
             </a>
         }
         <span class="fw-bold" style="min-width:70px; text-align:center;">@hourLabel.Split('–')[0].Trim()</span>
-        @if (selHour < 20)
+        @if (selHour < 23)
         {
             <a class="hour-nav-btn"
                asp-controller="Reports" asp-action="HourlyDrillDown"

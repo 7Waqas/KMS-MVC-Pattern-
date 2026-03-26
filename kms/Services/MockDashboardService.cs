@@ -15,11 +15,11 @@ namespace kms.Services
 
         public Task<DashboardViewModel> GetDashboardDataAsync()
         {
-            // Hour slots 06:00 → 20:00  (index 0 = 06:00, index 1 = 07:00 … index 14 = 20:00)
-            //                            06  07  08  09  10  11  12  13  14  15  16  17  18  19  20
-            var hourlyKeyOut = new List<int> { 0, 0, 3, 2, 1, 1, 0, 2, 1, 0, 0, 0, 0, 0, 0 };
-            var hourlyKeyReturned = new List<int> { 0, 0, 0, 0, 0, 0, 2, 0, 0, 1, 3, 2, 0, 0, 0 };
-            var hourlyUnauthorized = new List<int> { 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0 };
+            // Hour slots 06:00 → 20:00  (index 0 = 00:00, index 1 = 07:00 … index 14 = 20:00)
+            //                            0  07  08  09  10  11  12  13  14  15  16  17  18  19  20.....24
+            var hourlyKeyOut = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 1, 1, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            var hourlyKeyReturned = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 1, 3, 2, 0, 0, 0, 0, 0, 0 };
+            var hourlyUnauthorized = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
             var viewModel = new DashboardViewModel
             {

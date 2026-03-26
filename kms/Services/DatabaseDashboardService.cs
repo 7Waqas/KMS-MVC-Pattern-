@@ -24,32 +24,36 @@ namespace kms.Services
                 {
                     r.Direction,
                     r.ScanTime,
-                    r.AuthStatus
+                    r.AuthStatus,
+                    r.KeyName
                 })
                 .ToListAsync();
 
-            // Hour slots 06 to 20
-            var hourSlots = Enumerable.Range(6, 15).ToList(); // 6,7,...,20
+            // Hour slots 0 to 24
+            var hourSlots = Enumerable.Range(0, 24).ToList();
 
             var hourlyKeyOut = hourSlots.Select(h =>
-                todayActivities.Count(r =>
-                    r.Direction != null &&
-                    r.Direction.Contains("OUT") &&
-                    TryParseHour(r.ScanTime) == h))
-                .ToList();
+    todayActivities.Where(r =>
+        r.Direction != null &&
+        r.Direction.Contains("OUT") &&
+        TryParseHour(r.ScanTime) == h)
+    .GroupBy(r => r.KeyName).Distinct().Count())
+    .ToList();
 
             var hourlyKeyReturned = hourSlots.Select(h =>
-                todayActivities.Count(r =>
+                todayActivities.Where(r =>
                     r.Direction != null &&
                     r.Direction.Contains("IN") &&
-                    TryParseHour(r.ScanTime) == h))
+                    TryParseHour(r.ScanTime) == h)
+                .GroupBy(r => r.KeyName).Distinct().Count())
                 .ToList();
 
             var hourlyUnauthorized = hourSlots.Select(h =>
-                todayActivities.Count(r =>
+                todayActivities.Where(r =>
                     r.AuthStatus != null &&
                     r.AuthStatus.Contains("UNAUTHORIZED") &&
-                    TryParseHour(r.ScanTime) == h))
+                    TryParseHour(r.ScanTime) == h)
+                .GroupBy(r => r.KeyName).Distinct().Count())
                 .ToList();
 
             var viewModel = new DashboardViewModel

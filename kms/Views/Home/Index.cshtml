@@ -294,11 +294,15 @@
 </div>
 
 @section Scripts {
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="~/lib/chartjs/chart.umd.js"></script>
 <script>
     // Data from server
-    const hourLabels    = ['06:00','07:00','08:00','09:00','10:00','11:00','12:00',
-                           '13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+   const hourLabels = [
+    '00:00','01:00','02:00','03:00','04:00','05:00',
+    '06:00','07:00','08:00','09:00','10:00','11:00',
+    '12:00','13:00','14:00','15:00','16:00','17:00',
+    '18:00','19:00','20:00','21:00','22:00','23:00'
+];
     const keyOut        = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HourlyKeyOut));
     const keyReturned   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HourlyKeyReturned));
     const unauthorized  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HourlyUnauthorized));
@@ -354,7 +358,7 @@
         onClick: function(event, elements) {
             if (!elements.length) return;
             var index     = elements[0].index;          // 0-14 → maps to hour 6-20
-            var hour      = index + 6;                  // convert index to real hour
+            var hour      = index;                  // convert index to real hour
             var today     = new Date().toISOString().split('T')[0]; // yyyy-MM-dd
             window.location.href = '/Reports/HourlyDrillDown?date=' + today + '&hour=' + hour;
         },
@@ -390,11 +394,17 @@
     }
 });
 
-    // Stat card animation
-    $(document).ready(function () {
-        $('.stat-card').each(function (index) {
-            $(this).delay(100 * index).fadeIn(300);
-        });
+   // Show cards — works with or without jQuery
+document.addEventListener('DOMContentLoaded', function () {
+    var cards = document.querySelectorAll('.stat-card');
+    cards.forEach(function (card, index) {
+        setTimeout(function () {
+            card.style.display = 'block';
+            card.style.opacity = '0';
+            card.style.transition = 'opacity 0.3s ease';
+            setTimeout(function () { card.style.opacity = '1'; }, 50);
+        }, 100 * index);
     });
+});
 </script>
 }
