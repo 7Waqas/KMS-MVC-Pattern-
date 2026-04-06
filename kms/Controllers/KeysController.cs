@@ -21,7 +21,7 @@ namespace kms.Controllers
         {
             var keys = await _context.KeyMasters
                 .Where(k => k.IsActive == true)
-                .OrderBy(k => k.KeyName)
+                .OrderBy(k => k.EnrollNumber)
                 .ToListAsync();
 
             return View(keys);

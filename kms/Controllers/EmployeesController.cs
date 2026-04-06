@@ -42,7 +42,7 @@ namespace kms.Controllers
         {
             var employees = await _context.EmployeeMasters
                 .Where(e => e.IsActive == true)
-                .OrderBy(e => e.FullName)
+                .OrderBy(e => e.EnrollNumber)
                 .ToListAsync();
 
             return View(employees);

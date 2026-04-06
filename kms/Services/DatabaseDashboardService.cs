@@ -74,13 +74,15 @@ namespace kms.Services
                                   r.ReportType == 1))
                     .CountAsync(),
 
-                KeysNotReturnedToday = await _context.KeyMasters
-                    .Where(k => k.IsActive == true)
-                    .Where(k => !_context.KeyReportData
-                        .Any(r => r.KeyName == k.KeyName &&
-                                  r.ReportDate == today &&
-                                  r.ReportType == 2))
-                    .CountAsync(),
+                KeysNotReturnedToday = await _context.KeyReportData
+                    .Where(r => r.ReportDate == today && r.ReportType == 1)
+                    .Select(r => r.KeyName)
+                        .Distinct()
+                    .Where(keyName => !_context.KeyReportData
+                    .Any(r2 => r2.KeyName == keyName &&
+                               r2.ReportDate == today &&
+                               r2.ReportType == 2))
+                     .CountAsync(),
 
                 UnauthorizedAccessToday = await _context.KeyReportData
                     .Where(r => r.ReportDate == today && r.ReportType == 3)

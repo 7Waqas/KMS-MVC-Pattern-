@@ -125,21 +125,25 @@ namespace kms.Controllers
         {
             var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
 
-            var allKeys = await _context.KeyMasters
-                .Where(k => k.IsActive == true)
-                .ToListAsync();
-
-            var returnedKeyNames = await _context.KeyReportData
-                .Where(r => r.ReportDate.Year == selectedDate.Year &&
-                            r.ReportDate.Month == selectedDate.Month &&
-                            r.ReportDate.Day == selectedDate.Day &&
-                            r.ReportType == 2)
+            // Only keys that were TAKEN today (ReportType 1)
+            var takenTodayKeyNames = await _context.KeyReportData
+                .Where(r => r.ReportDate == selectedDate && r.ReportType == 1)
                 .Select(r => r.KeyName)
+                .Distinct()
                 .ToListAsync();
 
-            var notReturnedKeys = allKeys
-                .Where(k => !returnedKeyNames.Contains(k.KeyName))
-                .ToList();
+            // From those, find which ones were NOT returned (no ReportType 2)
+            var returnedKeyNames = await _context.KeyReportData
+                .Where(r => r.ReportDate == selectedDate && r.ReportType == 2)
+                .Select(r => r.KeyName)
+                .Distinct()
+                .ToListAsync();
+
+            var notReturnedKeys = await _context.KeyMasters
+                .Where(k => k.IsActive == true &&
+                            takenTodayKeyNames.Contains(k.KeyName) &&
+                            !returnedKeyNames.Contains(k.KeyName))
+                .ToListAsync();
 
             var viewModel = new ReportViewModel
             {
