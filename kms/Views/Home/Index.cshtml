@@ -30,10 +30,11 @@
 
     .print-icon:hover { opacity: 1; transform: scale(1.1); }
 
-    .border-primary-gradient { border-image: linear-gradient(135deg, #0d6efd, #66b0ff) 1; }
-    .border-success-gradient { border-image: linear-gradient(135deg, #198754, #6fcf97) 1; }
-    .border-warning-gradient { border-image: linear-gradient(135deg, #ffc107, #ffe066) 1; }
-    .border-danger-gradient  { border-image: linear-gradient(135deg, #dc3545, #ff6b6b) 1; }
+    /* REPLACE with */
+.card.border-primary-gradient { box-shadow: 0 0 0 2px #0d6efd !important; border-radius: 0.75rem !important; }
+.card.border-success-gradient { box-shadow: 0 0 0 2px #198754 !important; border-radius: 0.75rem !important; }
+.card.border-warning-gradient { box-shadow: 0 0 0 2px #ffc107 !important; border-radius: 0.75rem !important; }
+.card.border-danger-gradient  { box-shadow: 0 0 0 2px #dc3545 !important; border-radius: 0.75rem !important; }
 
     .stat-card:hover {
         transform: translateY(-5px);
@@ -66,16 +67,17 @@
     }
 </style>
 
-<!-- Page Header -->
+@* <!-- Page Header -->
 <div class="row mb-4">
     <div class="col-12">
-        <h1 id="Title" class="display-5 fw-bold">
-            <i class="bi bi-shield-lock-fill text-primary"></i>
+        <h1 id="Title" class="display-5 fw-bold d-flex align-items-center gap-2">
+            <img src="~/images/emblem_transparent.png" alt="MoD Emblem"
+                 style="height:45px; width:auto; filter: brightness(0) saturate(100%) invert(18%) sepia(90%) saturate(600%) hue-rotate(100deg) brightness(60%);" />
             MoD Intelligent Key Management System
         </h1>
         <p class="text-muted">Real-time monitoring of key management activities</p>
     </div>
-</div>
+</div> *@
 
 <!-- Statistics Cards -->
 <div class="row g-4 mb-4">
