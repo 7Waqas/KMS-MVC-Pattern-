@@ -16,164 +16,189 @@
 
     <style>
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: radial-gradient(circle at 30% 20%, #0f3c78, #02142b 70%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* ===== Canvas ===== */
-        #networkCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* ===== Login Card ===== */
-        .login-container {
-            max-width: 600px;
-            width: 100%;
-            padding: 20px;
-            position: relative;
-            z-index: 10;
-            animation: fadeIn 1s ease;
-        }
-
-        @@keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(40px);
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
             }
 
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .login-card {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(25px);
-            border-radius: 25px;
-            box-shadow: 0 0 50px rgba(0,180,255,0.3);
-            overflow: hidden;
-        }
-
-        .login-header {
-            background: linear-gradient(135deg,#0f3c78,#032b4d);
-            padding: 30px 20px;
-            text-align: center;
-            color: white;
-        }
-
-        .logo-icon {
-            font-size: 45px;
-            animation: pulse 2s infinite;
-        }
-
-        @@keyframes pulse {
-            0% {
-                transform: scale(1);
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background: radial-gradient(circle at 30% 20%, #0a3d1f, #020f07 70%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                position: relative;
             }
 
-            50% {
-                transform: scale(1.1);
+            /* ===== Canvas ===== */
+            #networkCanvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
             }
 
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        .login-body {
-            padding: 30px 25px;
-        }
-
-        .input-wrapper {
-            margin-bottom: 18px;
-        }
-
-        .input-group {
-            border: 2px solid #d0d0d0;
-            border-radius: 12px;
-            overflow: hidden;
-            transition: 0.3s;
-        }
-
-            .input-group:focus-within {
-                border-color: #0f3c78;
-                box-shadow: 0 0 10px rgba(0,180,255,0.3);
+            /* ===== Login Card ===== */
+            .login-container {
+                max-width: 600px;
+                width: 100%;
+                padding: 20px;
+                position: relative;
+                z-index: 10;
+                animation: fadeIn 1s ease;
             }
 
-        .form-control {
-            border: none;
-            padding: 12px;
-        }
+            @@keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(40px);
+                }
 
-            .form-control:focus {
-                box-shadow: none;
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
             }
 
-        .input-group-text {
-            background: transparent;
-            border: none;
-            color: #0f3c78;
-        }
+            .login-card {
+                background: rgba(255,255,255,0.97);
+                backdrop-filter: blur(25px);
+                border-radius: 25px;
+                box-shadow: 0 0 50px rgba(0,200,80,0.25);
+                overflow: hidden;
+            }
 
-        .btn-login {
-            background: linear-gradient(135deg,#0f3c78,#02142b);
-            border: none;
-            padding: 14px;
-            font-weight: 600;
-            border-radius: 12px;
-            color: white;
-            transition: 0.3s;
-        }
-
-            .btn-login:hover {
+            .login-header {
+                background: linear-gradient(135deg, #0a3d1f, #041a0c);
+                padding: 30px 20px;
+                text-align: center;
                 color: white;
-                 transform: translateY(-2px);
-                box-shadow: 0 0 20px rgba(0,180,255,0.6);
             }
 
-        .footer-info {
-            text-align: center;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-        }
-
-        .copyright {
-            text-align: center;
-            margin-top: 20px;
-            position: relative;
-            z-index: 10;
-        }
-
-            .copyright small {
-                color: rgba(255,255,255,0.8);
+            .logo-icon {
+                height: 90px;
+                width: auto;
+                filter: drop-shadow(0 0 8px rgba(74,222,128,0.5));
+                filter: brightness(0) invert(1);
             }
 
-        .password-toggle {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-        }
+            @@keyframes pulse {
+                0% {
+                    transform: scale(1);
+                }
+
+                50% {
+                    transform: scale(1.08);
+                }
+
+                100% {
+                    transform: scale(1);
+                }
+            }
+
+            .login-body {
+                padding: 30px 25px;
+                background: #ffffff;
+            }
+
+            .input-wrapper {
+                margin-bottom: 18px;
+            }
+
+                .input-wrapper label {
+                    color: #1a3d2b;
+                    font-weight: 500;
+                    margin-bottom: 6px;
+                    display: block;
+                }
+
+            .input-group {
+                border: 2px solid #d0d0d0;
+                border-radius: 12px;
+                overflow: hidden;
+                transition: 0.3s;
+            }
+
+                .input-group:focus-within {
+                    border-color: #0a3d1f;
+                    box-shadow: 0 0 10px rgba(0,180,80,0.25);
+                }
+
+            .form-control {
+                border: none;
+                padding: 12px;
+                background: #ffffff;
+                color: #1a3d2b;
+            }
+
+                .form-control:focus {
+                    box-shadow: none;
+                    background: #ffffff;
+                    color: #1a3d2b;
+                }
+
+            .input-group-text {
+                background: transparent;
+                border: none;
+                color: #0a3d1f;
+            }
+
+            .form-check-input:checked {
+                background-color: #0a3d1f;
+                border-color: #0a3d1f;
+            }
+
+            .form-check-label {
+                color: #1a3d2b;
+            }
+
+            .btn-login {
+                background: linear-gradient(135deg, #0a3d1f, #041a0c);
+                border: none;
+                padding: 14px;
+                font-weight: 600;
+                border-radius: 12px;
+                color: white;
+                transition: 0.3s;
+            }
+
+                .btn-login:hover {
+                    color: white;
+                    transform: translateY(-2px);
+                    box-shadow: 0 0 20px rgba(0,200,80,0.5);
+                }
+
+            .footer-info {
+                text-align: center;
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 1px solid #ddd;
+                color: #4a6b58;
+            }
+
+            .copyright {
+                text-align: center;
+                margin-top: 20px;
+                position: relative;
+                z-index: 10;
+            }
+
+                .copyright small {
+                    color: rgba(255,255,255,0.75);
+                }
+
+            .password-toggle {
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                cursor: pointer;
+                color: #0a3d1f;
+            }
     </style>
 </head>
 
@@ -184,9 +209,10 @@
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <i class="bi bi-shield-lock-fill logo-icon"></i>
-                <h4 class="mt-2">MoD Key Management System</h4>
-                <small>Guard Every Key, Secure Every Access</small>
+                
+                <img src="~/images/emblem_transparent.png" alt="MoD Emblem" class="logo-icon" />
+                <h4 class="mt-2">Key Management System</h4>
+                <small style="color: rgba(255,255,255,0.75);">Guard Every Key, Secure Every Access</small>
             </div>
 
             <div class="login-body">
@@ -234,107 +260,106 @@
     </div>
 
     <script>
-        /* Password toggle */
-        document.getElementById("togglePassword").addEventListener("click", function () {
-            const input = document.getElementById("passwordInput");
-            this.classList.toggle("bi-eye-slash");
-            input.type = input.type === "password" ? "text" : "password";
-        });
+            /* Password toggle */
+            document.getElementById("togglePassword").addEventListener("click", function () {
+                const input = document.getElementById("passwordInput");
+                this.classList.toggle("bi-eye-slash");
+                input.type = input.type === "password" ? "text" : "password";
+            });
 
-        /* ===== Neural Network Animation ===== */
-        const canvas = document.getElementById("networkCanvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+            /* ===== Neural Network Animation ===== */
+            const canvas = document.getElementById("networkCanvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
 
-        let particles = [];
-        let mouse = { x:null, y:null };
+            let particles = [];
+            let mouse = { x: null, y: null };
 
-        window.addEventListener("mousemove", e => {
-            mouse.x = e.x;
-            mouse.y = e.y;
-        });
+            window.addEventListener("mousemove", e => {
+                mouse.x = e.x;
+                mouse.y = e.y;
+            });
 
-        class Particle {
-            constructor() {
-                this.x = Math.random()*canvas.width;
-                this.y = Math.random()*canvas.height;
-                this.speedX = (Math.random()-0.5)*0.6;
-                this.speedY = (Math.random()-0.5)*0.6;
-                this.size = 4;
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.speedX = (Math.random() - 0.5) * 0.6;
+                    this.speedY = (Math.random() - 0.5) * 0.6;
+                    this.size = 4;
+                }
 
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                    if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+                }
+
+                draw() {
+                    ctx.fillStyle = "rgba(74,222,128,0.8)";
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = "rgba(74,222,128,0.8)";
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
             }
 
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                if(this.x<0||this.x>canvas.width) this.speedX*=-1;
-                if(this.y<0||this.y>canvas.height) this.speedY*=-1;
+            function init() {
+                particles = [];
+                for (let i = 0; i < 100; i++) {
+                    particles.push(new Particle());
+                }
             }
 
-            draw() {
-                ctx.fillStyle="rgba(0,200,255,0.8)";
-                ctx.shadowBlur=10;
-                ctx.shadowColor="rgba(0,200,255,0.8)";
-                ctx.beginPath();
-                ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
-                ctx.fill();
-                ctx.shadowBlur=0;
-            }
-        }
+            function connect() {
+                for (let a = 0; a < particles.length; a++) {
+                    for (let b = a; b < particles.length; b++) {
+                        let dx = particles[a].x - particles[b].x;
+                        let dy = particles[a].y - particles[b].y;
+                        let dist = dx * dx + dy * dy;
+                        if (dist < 9000) {
+                            ctx.strokeStyle = "rgba(74,222,128,0.15)";
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[a].x, particles[a].y);
+                            ctx.lineTo(particles[b].x, particles[b].y);
+                            ctx.stroke();
+                        }
+                    }
 
-        function init(){
-            particles=[];
-            for(let i=0;i<100;i++){
-                particles.push(new Particle());
-            }
-        }
-
-        function connect(){
-            for(let a=0;a<particles.length;a++){
-                for(let b=a;b<particles.length;b++){
-                    let dx=particles[a].x-particles[b].x;
-                    let dy=particles[a].y-particles[b].y;
-                    let dist=dx*dx+dy*dy;
-                    if(dist<9000){
-                        ctx.strokeStyle="rgba(0,200,255,0.15)";
-                        ctx.lineWidth=1;
+                    // mouse interaction
+                    let dx = particles[a].x - mouse.x;
+                    let dy = particles[a].y - mouse.y;
+                    let dist = dx * dx + dy * dy;
+                    if (dist < 15000) {
+                        ctx.strokeStyle = "rgba(134,239,172,0.4)";
                         ctx.beginPath();
-                        ctx.moveTo(particles[a].x,particles[a].y);
-                        ctx.lineTo(particles[b].x,particles[b].y);
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(mouse.x, mouse.y);
                         ctx.stroke();
                     }
                 }
-
-                // mouse interaction
-                let dx=particles[a].x-mouse.x;
-                let dy=particles[a].y-mouse.y;
-                let dist=dx*dx+dy*dy;
-                if(dist<15000){
-                    ctx.strokeStyle="rgba(0,255,255,0.4)";
-                    ctx.beginPath();
-                    ctx.moveTo(particles[a].x,particles[a].y);
-                    ctx.lineTo(mouse.x,mouse.y);
-                    ctx.stroke();
-                }
             }
-        }
 
-        function animate(){
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            particles.forEach(p=>{p.update();p.draw();});
-            connect();
-            requestAnimationFrame(animate);
-        }
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => { p.update(); p.draw(); });
+                connect();
+                requestAnimationFrame(animate);
+            }
 
-        window.addEventListener("resize",()=>{
-            canvas.width=window.innerWidth;
-            canvas.height=window.innerHeight;
+            window.addEventListener("resize", () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                init();
+            });
+
             init();
-        });
-
-        init();
-        animate();
+            animate();
     </script>
 
 </body>
