@@ -1,0 +1,14 @@
+@using kms.Models.KeyCustody
+@model string
+@switch (Model)
+{
+    case KcResult.Ok:
+        <span class="badge bg-success">Authorized</span>
+        break;
+    case KcResult.NotAuthorized:
+        <span class="badge bg-danger">Wrong person</span>
+        break;
+    default:
+        <span class="badge bg-warning text-dark">No face</span>
+        break;
+}

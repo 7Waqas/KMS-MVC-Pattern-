@@ -1,0 +1,162 @@
+@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@model SecurityBoardViewModel
+@{
+    ViewData["Title"] = "Live Key Board";
+    string Short(string name) => name.Replace("key_", "").Trim();
+
+    // group used by the filter buttons
+    string Group(KeyTile k) => k.State switch
+    {
+        KeyTileState.OutProblem or KeyTileState.Overdue or KeyTileState.NotReturned => "attention",
+        KeyTileState.Out => "out",
+        KeyTileState.Returned => "returned",
+        _ => "board"
+    };
+    string TileClass(KeyTile k) => k.State switch
+    {
+        KeyTileState.OnBoard => "kc-tile--board",
+        KeyTileState.Returned => "kc-tile--returned",
+        KeyTileState.Out => "kc-tile--out",
+        KeyTileState.OutProblem => "kc-tile--problem",
+        _ => "kc-tile--overdue"
+    };
+    string StateText(KeyTile k) => k.State switch
+    {
+        KeyTileState.OnBoard => "On board",
+        KeyTileState.Returned => "Returned",
+        KeyTileState.Out => "Out",
+        KeyTileState.Overdue => "Overdue",
+        KeyTileState.NotReturned => "Not returned",
+        _ when k.LastResult == KcResult.NoFace => "No face scanned",
+        _ when k.LastResult == KcResult.NotAuthorized => "Wrong person",
+        _ => "Check"
+    };
+
+    var counts = Model.Keys.GroupBy(Group).ToDictionary(g => g.Key, g => g.Count());
+    int C(string g) => counts.TryGetValue(g, out var n) ? n : 0;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+    <div>
+        <h1 class="h2 fw-bold mb-1"><i class="bi bi-grid-3x3-gap"></i> Live Key Board</h1>
+        <p class="text-muted mb-0">
+            @if (Model.IsToday) { <span>Today, @Model.Date.ToString("dd MMM yyyy") · updates every minute</span> }
+            else { <span>@Model.Date.ToString("dddd, dd MMM yyyy") · state at the last scan of that day</span> }
+        </p>
+    </div>
+    <form method="get" class="d-flex gap-2 align-items-end">
+        <input type="date" name="date" class="form-control" value="@Model.Date.ToString("yyyy-MM-dd")" onchange="this.form.submit()" aria-label="Date" />
+        <a asp-action="Index" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">Today</a>
+    </form>
+</div>
+
+@if (!Model.IsToday && Model.LatestDataDate != null && Model.LatestDataDate != Model.Date)
+{
+    <div class="alert alert-info py-2 small"><i class="bi bi-info-circle"></i> Latest scan data available: <strong>@Model.LatestDataDate.Value.ToString("dd MMM yyyy")</strong>.</div>
+}
+
+<!-- Summary = filters: click a number to show only those boxes -->
+<div class="kc-summary kc-summary--5 mb-3" id="kcFilter">
+    <button type="button" class="kc-sum kc-sum--dark" data-filter="all">
+        <div class="kc-sum__n">@Model.Keys.Count</div><div class="kc-sum__t">All keys</div>
+    </button>
+    <button type="button" class="kc-sum kc-sum--red" data-filter="attention">
+        <div class="kc-sum__n">@C("attention")</div><div class="kc-sum__t">Need attention</div>
+    </button>
+    <button type="button" class="kc-sum kc-sum--blue" data-filter="out">
+        <div class="kc-sum__n">@C("out")</div><div class="kc-sum__t">Out (OK)</div>
+    </button>
+    <button type="button" class="kc-sum kc-sum--green" data-filter="returned">
+        <div class="kc-sum__n">@C("returned")</div><div class="kc-sum__t">Returned</div>
+    </button>
+    <button type="button" class="kc-sum kc-sum--grey" data-filter="board">
+        <div class="kc-sum__n">@C("board")</div><div class="kc-sum__t">On board</div>
+    </button>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm kc-static">
+            <div class="card-body">
+                <div class="kc-legend small text-muted mb-3">
+                    <span><i class="kc-dot kc-tile--board"></i>On board — not moved</span>
+                    <span><i class="kc-dot kc-tile--out"></i>Out with the right person</span>
+                    <span><i class="kc-dot kc-tile--returned"></i>Returned</span>
+                    <span><i class="kc-dot kc-tile--problem"></i>No face / wrong person</span>
+                    <span><i class="kc-dot kc-tile--overdue"></i>Overdue / not returned</span>
+                </div>
+                <div class="kc-grid">
+                    @foreach (var k in Model.Keys.OrderBy(k => Group(k) switch { "attention" => 0, "out" => 1, "returned" => 2, _ => 3 }).ThenBy(k => k.KeyName))
+                    {
+                        <a class="kc-tile kc-tile-link @TileClass(k)" data-group="@Group(k)" href="@Url.Action("Key", new { id = k.KeyEnroll, date = Model.Date.ToString("yyyy-MM-dd") })" title="@k.KeyName@(k.Location != null ? " — " + k.Location : "")">
+                            <div class="kc-tile__name">@Short(k.KeyName)</div>
+                            <div class="kc-tile__state">@StateText(k)</div>
+                            @if (k.State != KeyTileState.OnBoard)
+                            {
+                                <div class="kc-tile__who">@(k.Holder ?? "Unknown")</div>
+                                <div class="kc-tile__time">@k.Since?.ToString("HH:mm")</div>
+                            }
+                        </a>
+                    }
+                </div>
+                <p class="text-muted small mt-3 mb-0" id="kcEmpty" style="display:none">No keys in this group.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm kc-static">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <strong><i class="bi bi-shield-exclamation text-danger"></i> Incidents (@Model.Incidents.Count)</strong>
+                <a class="small" asp-action="Incidents" asp-route-from="@Model.Date.ToString("yyyy-MM-dd")" asp-route-to="@Model.Date.ToString("yyyy-MM-dd")">Open list</a>
+            </div>
+            <div class="list-group list-group-flush kc-incident-list">
+                @if (Model.Incidents.Count == 0)
+                {
+                    <div class="list-group-item text-success py-4 text-center"><i class="bi bi-shield-check fs-3 d-block"></i>No incidents.</div>
+                }
+                @foreach (var i in Model.Incidents)
+                {
+                    <a class="list-group-item list-group-item-action py-2" asp-action="Incident" asp-route-id="@i.Id">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong class="small">@Short(i.KeyName)</strong>
+                            <small class="text-muted">@i.OccurredAt?.ToString("HH:mm")</small>
+                        </div>
+                        <span class="kc-tag kc-type--@i.Type text-white">@KcIncidentType.Label(i.Type)</span>
+                        @if (i.PersonName != null) { <span class="small text-muted ms-1">@i.PersonName</span> }
+                        @if (i.Status != KcStatus.Open) { <span class="badge bg-secondary ms-1">@i.Status</span> }
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var buttons = document.querySelectorAll('#kcFilter [data-filter]');
+            function apply(f) {
+                var shown = 0;
+                buttons.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-filter') === f); });
+                document.querySelectorAll('.kc-tile').forEach(function (t) {
+                    var g = t.dataset.group;
+                    // "notreturned" (from the Dashboard card) = every key that is out right now
+                    var show = f === 'all' || g === f || (f === 'notreturned' && (g === 'out' || g === 'attention'));
+                    t.style.display = show ? '' : 'none';
+                    if (show) shown++;
+                });
+                document.getElementById('kcEmpty').style.display = shown ? 'none' : '';
+            }
+            buttons.forEach(function (btn) {
+                btn.addEventListener('click', function () { apply(btn.getAttribute('data-filter')); });
+            });
+            apply('@Model.Filter');   // filter chosen on the Dashboard (?filter=...)
+        })();
+    </script>
+    @if (Model.IsToday)
+    {
+        <script>setTimeout(function () { location.reload(); }, 60000);</script>
+    }
+}

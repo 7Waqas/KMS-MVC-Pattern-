@@ -1,0 +1,172 @@
+@{
+    Layout = null;   // full screen: no menus
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Key Room Monitor - KMS</title>
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.css" />
+    <style>
+        :root { --bg: #0d1117; --panel: #161b22; --line: #30363d; --ink: #e6edf3; --muted: #8b949e;
+                --green: #3fb950; --red: #f85149; --orange: #d29922; --blue: #58a6ff; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
+        .wrap { min-height: 100%; display: flex; flex-direction: column; padding: 2vh 2.5vw; gap: 2vh; }
+        .top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: clamp(14px, 1.4vw, 22px); letter-spacing: .5px; }
+        .top b { color: var(--ink); }
+        .live { display: inline-block; width: .7em; height: .7em; border-radius: 50%; background: var(--red); margin-right: .5em; animation: pulse 1.4s infinite; }
+        @@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(248,81,73,.6); } 70% { box-shadow: 0 0 0 .8em rgba(248,81,73,0); } 100% { box-shadow: 0 0 0 0 rgba(248,81,73,0); } }
+        .clock { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
+
+        .spot { display: flex; gap: 3vw; align-items: center; padding: 3vh 3vw; border-radius: 20px; border: 3px solid var(--green); background: #0f2a1a; flex: 1 1 auto; }
+        .spot--NOT_AUTHORIZED { border-color: var(--red); background: #2d0f14; }
+        .spot--NO_FACE { border-color: var(--orange); background: #2b2108; }
+        .spot--flash { animation: flash 1s ease 3; }
+        @@keyframes flash { 50% { box-shadow: 0 0 0 1.2vw rgba(248,81,73,.35); } }
+        .photo { width: clamp(140px, 22vh, 300px); height: clamp(140px, 22vh, 300px); border-radius: 22px; background: #30363d; flex: 0 0 auto;
+                 position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: clamp(40px, 7vh, 90px); font-weight: 700; color: #c9d1d9; }
+        .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .photo--none { background: #3d2e0a; color: var(--orange); }
+        .s-label { color: var(--muted); font-size: clamp(14px, 1.5vw, 24px); letter-spacing: 1px; text-transform: uppercase; }
+        .s-name { font-size: clamp(28px, 4.2vw, 72px); font-weight: 700; line-height: 1.1; margin: .2em 0; }
+        .s-key { font-size: clamp(20px, 2.4vw, 40px); color: #c9d1d9; }
+        .s-verdict { font-size: clamp(22px, 2.6vw, 44px); font-weight: 700; margin-top: .3em; }
+        .spot--OK .s-verdict { color: var(--green); } .spot--NOT_AUTHORIZED .s-verdict { color: var(--red); } .spot--NO_FACE .s-verdict { color: var(--orange); }
+
+        .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5vw; }
+        .stat { background: var(--panel); border-radius: 16px; padding: 2vh 1vw; text-align: center; border: 1px solid var(--line); }
+        .stat b { display: block; font-size: clamp(32px, 4.5vw, 80px); line-height: 1.05; }
+        .stat span { color: var(--muted); font-size: clamp(13px, 1.2vw, 20px); }
+
+        .recent { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1vw; }
+        .r { background: var(--panel); border-radius: 12px; padding: 1.2vh .8vw; border-top: 4px solid var(--green); display: flex; gap: .8vw; align-items: center; min-width: 0; }
+        .r--NOT_AUTHORIZED { border-top-color: var(--red); } .r--NO_FACE { border-top-color: var(--orange); }
+        .r .photo { width: clamp(40px, 6vh, 70px); height: clamp(40px, 6vh, 70px); border-radius: 10px; font-size: clamp(14px, 2vh, 22px); }
+        .r div { min-width: 0; font-size: clamp(12px, 1vw, 17px); }
+        .r b, .r .n { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .r .t { color: var(--muted); }
+
+        .start { position: fixed; inset: 0; background: rgba(13,17,23,.94); display: flex; align-items: center; justify-content: center; z-index: 10; cursor: pointer; }
+        .start div { text-align: center; font-size: clamp(18px, 2vw, 30px); }
+        .start i { font-size: 4em; color: var(--blue); display: block; margin-bottom: .3em; }
+        .exit { color: var(--muted); text-decoration: none; font-size: .85em; margin-left: 1.5em; }
+        .empty { color: var(--muted); font-size: clamp(20px, 2.5vw, 40px); }
+        @@media (max-width: 900px) { .stats { grid-template-columns: repeat(3, 1fr); } .recent { grid-template-columns: repeat(2, 1fr); } .spot { flex-direction: column; text-align: center; } }
+    </style>
+</head>
+<body>
+    <div class="start" id="start" role="button" tabindex="0" aria-label="Start monitor">
+        <div><i class="bi bi-display"></i>Click to start the monitor<br /><small style="color:#8b949e">(full screen + alert sound)</small></div>
+    </div>
+
+    <div class="wrap">
+        <div class="top">
+            <span><span class="live"></span><b>KEY ROOM MONITOR</b> · <span id="date">—</span></span>
+            <span><span class="clock" id="clock">--:--:--</span><a class="exit" href="@Url.Action("Index", "Home")">exit</a></span>
+        </div>
+
+        <div class="spot" id="spot"><span class="empty">Waiting for the first key scan…</span></div>
+
+        <div class="stats">
+            <div class="stat"><b id="sOut" style="color:var(--blue)">–</b><span>Keys out</span></div>
+            <div class="stat"><b id="sAtt" style="color:var(--red)">–</b><span>Need attention</span></div>
+            <div class="stat"><b id="sProb" style="color:var(--red)">–</b><span>Problem scans today</span></div>
+            <div class="stat"><b id="sOk" style="color:var(--green)">–</b><span>Correct scans</span></div>
+            <div class="stat"><b id="sBoard" style="color:#c9d1d9">–</b><span>On the board</span></div>
+        </div>
+
+        <div class="recent" id="recent"></div>
+    </div>
+
+    <script>
+        (function () {
+            var dataUrl = '@Url.Action("MonitorData", "Security")';
+            var photoUrl = '@Url.Action("Photo", "Security")/';
+            var lastSpotId = null, audio = null;
+            var verdicts = { OK: '✔ AUTHORIZED', NOT_AUTHORIZED: '✖ NOT AUTHORIZED FOR THIS KEY', NO_FACE: '⚠ KEY SCANNED WITHOUT A FACE' };
+
+            function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+            function initials(n) { return (n || '?').split(' ').filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join(''); }
+            function photo(e) {
+                return e.personEnroll
+                    ? '<span class="photo">' + esc(initials(e.person)) + '<img src="' + photoUrl + e.personEnroll + '" alt="" onerror="this.remove()"></span>'
+                    : '<span class="photo photo--none"><i class="bi bi-person-x"></i></span>';
+            }
+            function beep() {
+                if (!audio || audio.state !== 'running') return;
+                [0, .3, .6].forEach(function (t) {
+                    var o = audio.createOscillator(), g = audio.createGain();
+                    o.type = 'square'; o.frequency.value = 880;
+                    g.gain.setValueAtTime(.18, audio.currentTime + t);
+                    g.gain.exponentialRampToValueAtTime(.001, audio.currentTime + t + .22);
+                    o.connect(g); g.connect(audio.destination);
+                    o.start(audio.currentTime + t); o.stop(audio.currentTime + t + .23);
+                });
+            }
+
+            function render(d) {
+                document.getElementById('date').textContent = d.date;
+                var s = d.stats;
+                document.getElementById('sOut').textContent = s.keysOut;
+                document.getElementById('sAtt').textContent = s.attention;
+                document.getElementById('sProb').textContent = s.problems;
+                document.getElementById('sOk').textContent = s.correct;
+                document.getElementById('sBoard').textContent = s.onBoard;
+
+                var spot = document.getElementById('spot');
+                if (d.spot) {
+                    var e = d.spot, isNew = lastSpotId !== null && lastSpotId !== e.id;
+                    if (lastSpotId !== e.id) {
+                        spot.className = 'spot spot--' + e.result + (isNew && e.result !== 'OK' ? ' spot--flash' : '');
+                        spot.innerHTML = photo(e) +
+                            '<div><div class="s-label">Last scan · ' + esc(e.time) + '</div>' +
+                            '<div class="s-name">' + esc(e.person || 'No face scanned') + '</div>' +
+                            '<div class="s-key"><i class="bi bi-key-fill"></i> ' + esc(e.key) + ' · ' + (e.direction === 'OUT' ? 'TAKEN' : 'RETURNED') + '</div>' +
+                            '<div class="s-verdict">' + (verdicts[e.result] || '') + '</div></div>';
+                        if (isNew && e.result !== 'OK') beep();
+                        lastSpotId = e.id;
+                    }
+                }
+
+                document.getElementById('recent').innerHTML = (d.recent || []).map(function (e) {
+                    return '<div class="r r--' + esc(e.result) + '">' + photo(e) +
+                        '<div><b>' + esc(e.key) + '</b><span class="n">' + esc(e.person || 'No face') + '</span>' +
+                        '<span class="t">' + esc(e.time) + ' · ' + (e.direction === 'OUT' ? 'taken' : 'returned') + '</span></div></div>';
+                }).join('');
+            }
+
+            function poll() {
+                fetch(dataUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                    .then(function (r) {
+                        if (r.redirected || r.status === 401) { location.href = '@Url.Action("Login", "Account")'; return null; }
+                        return r.ok ? r.json() : null;
+                    })
+                    .then(function (d) { if (d) render(d); })
+                    .catch(function () { })
+                    .finally(function () { setTimeout(poll, 5000); });
+            }
+
+            function clock() {
+                var n = new Date(), p = function (x) { return (x < 10 ? '0' : '') + x; };
+                document.getElementById('clock').textContent = p(n.getHours()) + ':' + p(n.getMinutes()) + ':' + p(n.getSeconds());
+            }
+
+            function start() {
+                try { audio = new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { }
+                try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); } catch (e) { }
+                document.getElementById('start').remove();
+            }
+            var st = document.getElementById('start');
+            st.addEventListener('click', start);
+            st.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') start(); });
+
+            clock(); setInterval(clock, 1000);
+            poll();
+            // full reload every 30 minutes keeps a TV screen fresh all day
+            setTimeout(function () { location.reload(); }, 30 * 60 * 1000);
+        })();
+    </script>
+</body>
+</html>

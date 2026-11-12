@@ -1,0 +1,123 @@
+@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@model MovementViewModel
+@{
+    var e = Model.Event;
+    ViewData["Title"] = "Key scan";
+    string Short(string name) => name.Replace("key_", "").Trim();
+    var taken = e.Direction == KcDirection.Out;
+    var (boxClass, icon, verdict, explain) = e.Result switch
+    {
+        KcResult.Ok => ("kc-verdict--ok", "bi-check-circle-fill", "Authorized",
+            $"{e.FaceName} is on the authorized list for this key, and their face was scanned {Math.Abs(e.FaceOffsetSec ?? 0)} seconds {(e.FaceOffsetSec < 0 ? "before" : "after")} the key."),
+        KcResult.NotAuthorized => ("kc-verdict--bad", "bi-x-octagon-fill", "Wrong person",
+            $"The face scanned with this key was {e.FaceName}, who is NOT on the authorized list for this key."),
+        _ => ("kc-verdict--warn", "bi-exclamation-triangle-fill", "No face scanned",
+            "The key card was scanned, but nobody's face was scanned within 30 seconds. See who was at the board below.")
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <div class="text-muted small mb-1">
+            <a asp-action="Log" asp-route-date="@e.ScanDate.ToString("yyyy-MM-dd")">Key Log</a> › Key scan
+        </div>
+        <h1 class="h3 fw-bold mb-1">
+            <a asp-action="Key" asp-route-id="@e.KeyEnroll" asp-route-date="@e.ScanDate.ToString("yyyy-MM-dd")" class="text-decoration-none">@Short(e.KeyName)</a>
+            — @(taken ? "taken" : "returned")
+        </h1>
+        <p class="text-muted mb-0">@e.ScanDate.ToString("dddd, dd MMM yyyy") at @e.ScanTime.ToString("HH:mm:ss")@(Model.KeyLocation != null ? " · " + Model.KeyLocation : "")</p>
+    </div>
+    <button class="btn btn-outline-secondary" onclick="history.back()"><i class="bi bi-arrow-left"></i> Back</button>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <!-- Verdict -->
+        <div class="card border-0 shadow-sm kc-static mb-3 kc-verdict @boxClass">
+            <div class="card-body d-flex flex-wrap gap-4 align-items-center">
+                <div class="text-center">
+                    <partial name="_Avatar" model="@((e.FaceEnroll, e.FaceName ?? "No face", "lg"))" />
+                    <div class="small fw-bold mt-2">@(e.FaceName ?? "No face scanned")</div>
+                </div>
+                <div class="flex-grow-1" style="min-width:240px">
+                    <div class="kc-verdict__title"><i class="bi @icon"></i> @verdict</div>
+                    <p class="mb-2">@explain</p>
+                    <partial name="_Direction" model="e.Direction" />
+                    @foreach (var i in Model.Incidents)
+                    {
+                        <a asp-action="Incident" asp-route-id="@i.Id" class="btn btn-sm btn-danger ms-2"><i class="bi bi-shield-exclamation"></i> Open incident #@i.Id</a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- People at the board -->
+        <div class="card border-0 shadow-sm kc-static mb-3">
+            <div class="card-header bg-white"><strong><i class="bi bi-people"></i> People at the key board (±3 minutes)</strong>
+                <div class="small text-muted">Everyone whose face was scanned on the key-room device around this time.</div>
+            </div>
+            <ul class="list-group list-group-flush">
+                @if (Model.PeopleAtBoard.Count == 0)
+                {
+                    <li class="list-group-item text-muted">Nobody's face was scanned within 3 minutes.</li>
+                }
+                @foreach (var p in Model.PeopleAtBoard)
+                {
+                    var offset = p.At != null ? (int)(p.At.Value - e.ScanTime).TotalSeconds : 0;
+                    <li class="list-group-item d-flex align-items-center gap-2 @(p.Enroll == e.FaceEnroll ? "kc-li-hl" : "")">
+                        <partial name="_Avatar" model="@(((int?)p.Enroll, p.Name, "md"))" />
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">@p.Name
+                                @if (p.IsAuthorized) { <span class="badge bg-success ms-1">authorized for this key</span> }
+                                @if (p.Enroll == e.FaceEnroll) { <span class="badge bg-dark ms-1">matched to this scan</span> }
+                            </div>
+                            <div class="small text-muted">@p.Department</div>
+                        </div>
+                        <div class="small text-nowrap text-end">@p.At?.ToString("HH:mm:ss")<br /><span class="text-muted">@(offset >= 0 ? "+" : "")@(offset)s</span></div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <!-- Authorized list -->
+        <div class="card border-0 shadow-sm kc-static mb-3">
+            <div class="card-header bg-white"><strong><i class="bi bi-person-check"></i> Authorized for this key (@Model.Authorized.Count)</strong></div>
+            <ul class="list-group list-group-flush">
+                @if (Model.Authorized.Count == 0)
+                {
+                    <li class="list-group-item text-muted">Nobody is authorized. Add people in Management › Authorizations.</li>
+                }
+                @foreach (var p in Model.Authorized)
+                {
+                    <li class="list-group-item d-flex align-items-center gap-2">
+                        <partial name="_Avatar" model="@(((int?)p.Enroll, p.Name, "sm"))" />
+                        <span>@p.Name</span><span class="small text-muted ms-auto">@p.Department</span>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        <!-- Key's day -->
+        <div class="card border-0 shadow-sm kc-static">
+            <div class="card-header bg-white"><strong><i class="bi bi-clock-history"></i> This key that day</strong></div>
+            <ul class="list-group list-group-flush">
+                @foreach (var k in Model.KeyDay)
+                {
+                    <a asp-action="Movement" asp-route-id="@k.Id" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(k.Id == e.Id ? "kc-li-hl" : "")">
+                        <div class="d-flex align-items-center gap-2">
+                            <partial name="_Avatar" model="@((k.FaceEnroll, k.FaceName ?? "No face", "sm"))" />
+                            <div>
+                                <partial name="_Direction" model="k.Direction" /> <span class="ms-1">@k.ScanTime.ToString("HH:mm:ss")</span>
+                                <div class="small text-muted">@(k.FaceName ?? "no face scanned")</div>
+                            </div>
+                        </div>
+                        <partial name="_Result" model="k.Result" />
+                    </a>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

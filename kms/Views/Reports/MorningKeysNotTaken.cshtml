@@ -1,11 +1,14 @@
 ﻿@model kms.Models.ViewModels.ReportViewModel
 @{
     ViewData["Title"] = "Morning Keys NOT Taken";
-    var notTakenTodayKeys = ViewBag.NotTakenTodayKeys as List<kms.Models.KeyMaster>;
-    var notReturnedYesterdayKeys = ViewBag.NotReturnedYesterdayKeys as List<kms.Models.KeyMaster>;
+    var notTakenRows = ViewBag.NotTakenRows as List<Dictionary<string, object>> ?? new();
+    var notReturnedYesterdayKeys = ViewBag.NotReturnedYesterdayKeys as List<kms.Models.KeyMaster> ?? new();
     var notReturnedYesterdayCount = (int)ViewBag.NotReturnedYesterdayCount;
-    var selectedDate = (DateOnly)ViewBag.SelectedDate;
+    var fromDate = (DateOnly)ViewBag.FromDate;
+    var toDate = (DateOnly)ViewBag.ToDate;
+    var isSingleDay = (bool)ViewBag.IsSingleDay;
     var yesterday = (DateOnly)ViewBag.Yesterday;
+    var isRange = !isSingleDay;
 }
 
 <div class="row mb-4">
@@ -16,82 +19,115 @@
         </h1>
         <p class="text-muted">Keys that were not scanned out in the morning</p>
     </div>
-    <div class="col-md-4 text-end">
+    <div class="col-md-4 text-end d-print-none">
         <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Back to Dashboard
         </a>
     </div>
 </div>
 
-<!-- Date Filter & Yesterday Alert -->
+<!-- Print-only heading (shown only when printing) -->
+<div class="row mb-2 d-none d-print-block">
+    <div class="col-12">
+        <h5 class="mb-0">
+            Keys NOT Taken @(isRange ? $"({fromDate:dd MMM yyyy} – {toDate:dd MMM yyyy})" : $"({fromDate:dd MMM yyyy})")
+        </h5>
+        <p class="text-muted" style="font-size:12px;">Printed on @DateTime.Now.ToString("dd MMM yyyy HH:mm")</p>
+    </div>
+</div>
+
+<!-- Date Range Filter & Yesterday Alert -->
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-5 d-print-none">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <form asp-action="MorningKeysNotTaken" method="get">
-                    <label class="form-label fw-bold">
-                        <i class="bi bi-calendar3"></i> Select Date
+                <form asp-action="MorningKeysNotTaken" method="get" id="dateFilterForm">
+                    <label class="form-label fw-bold mb-2">
+                        <i class="bi bi-calendar3"></i> Date Range
                     </label>
-                    <input type="date"
-                           name="date"
-                           class="form-control"
-                           value="@selectedDate.ToString("yyyy-MM-dd")"
-                           onchange="this.form.submit()" />
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">From</label>
+                            <input type="date" name="fromDate" id="fromDateInput" class="form-control form-control-sm"
+                                   value="@fromDate.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">To</label>
+                            <input type="date" name="toDate" id="toDateInput" class="form-control form-control-sm"
+                                   value="@toDate.ToString("yyyy-MM-dd")" />
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="submit" class="btn btn-warning btn-sm flex-fill">
+                            <i class="bi bi-funnel"></i> Apply
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm flex-fill" onclick="applyMonthlyRange()">
+                            <i class="bi bi-calendar-month"></i> This Month
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm flex-fill" onclick="window.print()" title="Print this report">
+                            <i class="bi bi-printer-fill"></i> Print
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
-    <div class="col-md-8">
+    <div class="col-md-7">
         <div class="card border-0 shadow-sm bg-warning bg-opacity-10 mb-3">
             <div class="card-body">
                 <h5 class="mb-0">
                     <i class="bi bi-info-circle text-warning"></i>
-                    Keys NOT Taken Today:
+                    Keys NOT Taken
+                    @(isRange ? $"({fromDate:dd MMM yyyy} – {toDate:dd MMM yyyy})" : $"Today ({fromDate:dd MMM yyyy})"):
                     <span class="badge bg-warning">@Model.TotalRecords</span>
                 </h5>
             </div>
         </div>
 
-        @if (notReturnedYesterdayCount > 0)
+        @if (isSingleDay)
         {
-            <div class="alert alert-danger border-0 shadow-sm mb-0">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="alert-heading mb-1">
-                            <i class="bi bi-exclamation-triangle-fill"></i>
-                            Yesterday Not Returned
-                        </h6>
-                        <p class="mb-0">
-                            <strong>@notReturnedYesterdayCount</strong> keys were not returned yesterday evening
-                            (@yesterday.ToString("dd MMM yyyy"))
-                        </p>
+            @if (notReturnedYesterdayCount > 0)
+            {
+                <div class="alert alert-danger border-0 shadow-sm mb-0 d-print-none">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="alert-heading mb-1">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                Yesterday Not Returned
+                            </h6>
+                            <p class="mb-0">
+                                <strong>@notReturnedYesterdayCount</strong> keys were not returned yesterday evening
+                                (@yesterday.ToString("dd MMM yyyy"))
+                            </p>
+                        </div>
+                        <a asp-action="EveningKeysNotReturned"
+                           asp-route-fromDate="@yesterday.ToString("yyyy-MM-dd")"
+                           asp-route-toDate="@yesterday.ToString("yyyy-MM-dd")"
+                           class="btn btn-danger btn-sm">
+                            <i class="bi bi-arrow-right-circle"></i> View Details
+                        </a>
                     </div>
-                    <a asp-action="EveningKeysNotReturned"
-                       asp-route-date="@yesterday.ToString("yyyy-MM-dd")"
-                       class="btn btn-danger btn-sm">
-                        <i class="bi bi-arrow-right-circle"></i> View Details
-                    </a>
                 </div>
-            </div>
-        }
-        else
-        {
-            <div class="alert alert-success border-0 shadow-sm mb-0">
-                <p class="mb-0">
-                    <i class="bi bi-check-circle-fill"></i>
-                    All keys were returned yesterday evening ✅
-                </p>
-            </div>
+            }
+            else
+            {
+                <div class="alert alert-success border-0 shadow-sm mb-0 d-print-none">
+                    <p class="mb-0">
+                        <i class="bi bi-check-circle-fill"></i>
+                        All keys were returned yesterday evening ✅
+                    </p>
+                </div>
+            }
         }
     </div>
 </div>
 
-<!-- Today's NOT TAKEN Table -->
+<!-- NOT TAKEN Table -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-warning bg-opacity-10 border-0">
         <h5 class="mb-0 fw-bold">
             <i class="bi bi-calendar-x"></i>
-            Keys NOT Taken Today (@selectedDate.ToString("dd MMM yyyy"))
+            Keys NOT Taken @(isRange ? $"({fromDate:dd MMM yyyy} – {toDate:dd MMM yyyy})" : $"({fromDate:dd MMM yyyy})")
         </h5>
     </div>
     <div class="card-body p-0">
@@ -99,35 +135,32 @@
             <table class="table table-hover mb-0">
                 <thead class="table-dark">
                     <tr>
+                        @if (isRange)
+                        {
+                            <th><i class="bi bi-calendar3"></i> Date</th>
+                        }
                         <th><i class="bi bi-key"></i> Key Name</th>
                         <th><i class="bi bi-geo-alt"></i> Location</th>
                         <th><i class="bi bi-exclamation-circle"></i> Status</th>
+                        <th><i class="bi bi-person"></i> Taken By</th>
                         <th><i class="bi bi-people"></i> Authorized Persons</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (notTakenTodayKeys != null && notTakenTodayKeys.Any())
+                    @if (notTakenRows.Any())
                     {
-                        @foreach (var key in notTakenTodayKeys)
+                        @foreach (var row in notTakenRows)
                         {
-                            var authorizedPersons = ViewContext.HttpContext
-                            .RequestServices
-                            .GetService<ApplicationDbContext>()
-                            .KeyAuthorizations
-                            .Where(a => a.KeyEnroll == key.EnrollNumber)
-                            .Join(ViewContext.HttpContext.RequestServices
-                            .GetService<ApplicationDbContext>().EmployeeMasters,
-                            ka => ka.EmpEnroll,
-                            em => em.EnrollNumber,
-                            (ka, em) => em.FullName)
-                            .ToList();
-
                             <tr class="table-danger">
+                                @if (isRange)
+                                {
+                                    <td>@(((DateOnly)row["Date"]).ToString("dd MMM yyyy"))</td>
+                                }
                                 <td>
                                     <i class="bi bi-key-fill text-danger me-2"></i>
-                                    <strong>@key.KeyName</strong>
+                                    <strong>@row["KeyName"]</strong>
                                 </td>
-                                <td>@key.KeyLocation</td>
+                                <td>@row["KeyLocation"]</td>
                                 <td>
                                     <span class="badge bg-danger">
                                         <i class="bi bi-x-circle"></i> NOT TAKEN
@@ -135,8 +168,14 @@
                                 </td>
                                 <td>
                                     <span class="text-muted">
+                                        <i class="bi bi-person"></i>
+                                        @row["TakenBy"]
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
                                         <i class="bi bi-person-check"></i>
-                                        @(authorizedPersons.Any() ? string.Join(", ", authorizedPersons) : "--")
+                                        @row["AuthorizedPersons"]
                                     </span>
                                 </td>
                             </tr>
@@ -145,10 +184,10 @@
                     else
                     {
                         <tr>
-                            <td colspan="4" class="text-center py-5">
+                            <td colspan="@(isRange ? 6 : 5)" class="text-center py-5">
                                 <i class="bi bi-check-circle display-1 text-success"></i>
                                 <p class="mt-3 text-success fw-bold">
-                                    ✅ All keys were taken out this morning!
+                                    ✅ All keys were taken out during this period!
                                 </p>
                             </td>
                         </tr>
@@ -159,10 +198,10 @@
     </div>
 </div>
 
-<!-- Yesterday's NOT RETURNED Section (Expandable) -->
-@if (notReturnedYesterdayCount > 0)
+<!-- Yesterday's NOT RETURNED Section (single-day view only) -->
+@if (isSingleDay && notReturnedYesterdayCount > 0)
 {
-    <div class="card border-danger border-2 shadow-sm">
+    <div class="card border-danger border-2 shadow-sm d-print-none">
         <div class="card-header bg-danger text-white">
             <h5 class="mb-0">
                 <i class="bi bi-calendar-minus"></i>
@@ -185,18 +224,6 @@
                     <tbody>
                         @foreach (var key in notReturnedYesterdayKeys)
                         {
-                            var authorizedPersons = ViewContext.HttpContext
-                            .RequestServices
-                            .GetService<ApplicationDbContext>()
-                            .KeyAuthorizations
-                            .Where(a => a.KeyEnroll == key.EnrollNumber)
-                            .Join(ViewContext.HttpContext.RequestServices
-                            .GetService<ApplicationDbContext>().EmployeeMasters,
-                            ka => ka.EmpEnroll,
-                            em => em.EnrollNumber,
-                            (ka, em) => em.FullName)
-                            .ToList();
-
                             <tr class="table-danger">
                                 <td>
                                     <i class="bi bi-key-fill text-danger me-2"></i>
@@ -211,12 +238,13 @@
                                 <td>
                                     <span class="text-muted">
                                         <i class="bi bi-person-check"></i>
-                                        @(authorizedPersons.Any() ? string.Join(", ", authorizedPersons) : "--")
+                                        --
                                     </span>
                                 </td>
                                 <td>
                                     <a asp-action="EveningKeysNotReturned"
-                                       asp-route-date="@yesterday.ToString("yyyy-MM-dd")"
+                                       asp-route-fromDate="@yesterday.ToString("yyyy-MM-dd")"
+                                       asp-route-toDate="@yesterday.ToString("yyyy-MM-dd")"
                                        class="btn btn-sm btn-outline-danger">
                                         View Yesterday Report
                                     </a>
@@ -232,11 +260,21 @@
 
 @section Scripts {
     <script>
-        window.onload = function () {
+        window.onload = function() {
             const params = new URLSearchParams(window.location.search);
             if (params.get('print') === 'true') {
                 window.print();
             }
+        }
+
+        function applyMonthlyRange() {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const pad = n => String(n).padStart(2, '0');
+            const toStr = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+            document.getElementById('fromDateInput').value = toStr(firstDay);
+            document.getElementById('toDateInput').value = toStr(now);
+            document.getElementById('dateFilterForm').submit();
         }
     </script>
 }
