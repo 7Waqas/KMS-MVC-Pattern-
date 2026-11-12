@@ -1,0 +1,125 @@
+@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@model AuditViewModel
+@{
+    ViewData["Title"] = "Key Security Audit";
+    int Pct(int part) => Model.KeyScans == 0 ? 0 : (int)Math.Round(100.0 * part / Model.KeyScans);
+    int ByType(string t) => Model.ByType.TryGetValue(t, out var n) ? n : 0;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+    <div>
+        <h1 class="display-6 fw-bold mb-1"><i class="bi bi-clipboard-data"></i> Key Security Audit</h1>
+        <p class="text-muted mb-0">@Model.From.ToString("dd MMM yyyy") – @Model.To.ToString("dd MMM yyyy") · generated @DateTime.Now.ToString("dd MMM yyyy HH:mm")</p>
+    </div>
+    <div class="d-flex gap-2 align-items-end">
+        <form method="get" class="d-flex gap-2 align-items-end">
+            <div><label class="form-label small fw-bold mb-1">From</label><input type="date" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" /></div>
+            <div><label class="form-label small fw-bold mb-1">To</label><input type="date" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" /></div>
+            <button class="btn btn-success"><i class="bi bi-arrow-repeat"></i></button>
+        </form>
+        <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<h5 class="fw-bold mt-2">1. How the key scans really happened</h5>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm kc-static"><div class="card-body">
+        <div class="text-muted small">Key scans</div><div class="fs-3 fw-bold">@Model.KeyScans.ToString("N0")</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm kc-static"><div class="card-body">
+        <div class="text-muted small">Correct (authorized face + key)</div><div class="fs-3 fw-bold text-success">@Pct(Model.ScansOk)%</div>
+        <div class="small text-muted">@Model.ScansOk.ToString("N0") scans</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm kc-static"><div class="card-body">
+        <div class="text-muted small">Key scanned with NO face</div><div class="fs-3 fw-bold text-warning">@Pct(Model.ScansNoFace)%</div>
+        <div class="small text-muted">@Model.ScansNoFace.ToString("N0") scans</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm kc-static"><div class="card-body">
+        <div class="text-muted small">Unauthorized person's face</div><div class="fs-3 fw-bold text-danger">@Pct(Model.ScansNotAuthorized)%</div>
+        <div class="small text-muted">@Model.ScansNotAuthorized.ToString("N0") scans</div></div></div></div>
+</div>
+
+<h5 class="fw-bold">2. Incidents found</h5>
+<div class="card border-0 shadow-sm mb-4 kc-static">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead class="table-light"><tr><th>Incident</th><th>Meaning</th><th class="text-end">Count</th></tr></thead>
+            <tbody>
+                <tr><td><span class="badge kc-type kc-type--TAKEN_WITHOUT_SCAN">Taken without scan</span></td><td class="small">Key came back but was never scanned out — someone took it without scanning.</td><td class="text-end fw-bold">@ByType(KcIncidentType.TakenWithoutScan).ToString("N0")</td></tr>
+                <tr><td><span class="badge kc-type kc-type--NOT_AUTHORIZED">Not authorized</span></td><td class="small">Key scanned with the face of someone not authorized for it.</td><td class="text-end fw-bold">@ByType(KcIncidentType.NotAuthorized).ToString("N0")</td></tr>
+                <tr><td><span class="badge kc-type kc-type--NO_FACE">Key scanned without face</span></td><td class="small">Key card scanned but nobody's face was scanned with it.</td><td class="text-end fw-bold">@ByType(KcIncidentType.NoFace).ToString("N0")</td></tr>
+                <tr><td><span class="badge kc-type kc-type--RETURN_NOT_SCANNED">Return not scanned</span></td><td class="small">Key scanned out, but its return was never scanned.</td><td class="text-end fw-bold">@ByType(KcIncidentType.ReturnNotScanned).ToString("N0")</td></tr>
+                <tr><td><span class="badge kc-type kc-type--SILENT_KEY">Silent key</span></td><td class="small">Authorized holders were at the board but the key was never scanned that day (low severity).</td><td class="text-end fw-bold">@ByType(KcIncidentType.SilentKey).ToString("N0")</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white small text-muted">Reviewed by security: @Model.Confirmed confirmed, @Model.Dismissed dismissed. Dismissed incidents are excluded from the rankings below.</div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <h5 class="fw-bold">3. People most often responsible / top suspect</h5>
+        <div class="card border-0 shadow-sm mb-4 kc-static">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead class="table-light"><tr><th>Name</th><th>Department</th><th class="text-end">Not auth.</th><th class="text-end">No face</th><th class="text-end">Taken w/o scan</th><th class="text-end">Return not scanned</th><th class="text-end">Total</th></tr></thead>
+                    <tbody>
+                        @foreach (var p in Model.People)
+                        {
+                            <tr>
+                                <td class="fw-bold"><a asp-action="Incidents" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-q="@p.Name">@p.Name</a></td>
+                                <td class="small">@(p.Department ?? "--")</td>
+                                <td class="text-end">@p.NotAuthorized</td>
+                                <td class="text-end">@p.NoFace</td>
+                                <td class="text-end">@p.TakenWithoutScan</td>
+                                <td class="text-end">@p.ReturnNotScanned</td>
+                                <td class="text-end fw-bold">@p.Total</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white small text-muted">
+                A high "Not authorized" count for one person often means they collect keys for others (e.g. office staff) and are missing from the authorization list — check the list before treating it as misuse.
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <h5 class="fw-bold">4. Keys with most incidents</h5>
+        <div class="card border-0 shadow-sm mb-4 kc-static">
+            <table class="table table-sm mb-0">
+                <tbody>
+                    @foreach (var k in Model.Keys)
+                    {
+                        <tr><td><a asp-action="Key" asp-route-id="@k.KeyEnroll" asp-route-date="@Model.To.ToString("yyyy-MM-dd")">@k.Name</a></td><td class="text-end fw-bold">@k.Count</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <h5 class="fw-bold">5. By department</h5>
+        <div class="card border-0 shadow-sm mb-4 kc-static">
+            <table class="table table-sm mb-0">
+                <tbody>
+                    @foreach (var d in Model.Departments)
+                    {
+                        <tr><td>@d.Name</td><td class="text-end fw-bold">@d.Count</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm kc-static d-print-none">
+    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="small text-muted">Changed key authorizations? Re-check this period so the results use the corrected list. Reviewed incidents are kept.</div>
+        <form asp-action="Recheck" method="post" class="m-0">
+            <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+            <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+            <button class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> Re-check this period</button>
+        </form>
+    </div>
+</div>

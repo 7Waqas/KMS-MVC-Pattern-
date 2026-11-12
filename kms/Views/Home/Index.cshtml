@@ -1,15 +1,45 @@
-﻿@model kms.Models.ViewModels.DashboardViewModel
+﻿@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@using kms.Services.KeyCustody
+@model HomeDashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
-    
+    var b = Model.Board;
+    var dateStr = b.Date.ToString("yyyy-MM-dd");
+    var groups = b.Keys.GroupBy(KeyCustodyQueries.Group).ToDictionary(g => g.Key, g => g.Count());
+    int G(string g) => groups.TryGetValue(g, out var n) ? n : 0;
+    int notTaken = G("board");
+    int notReturned = G("out") + G("attention");
+    int problems = Model.ScansNoFace + Model.ScansWrongPerson;
+    string Short(string name) => name.Replace("key_", "").Trim();
+
+
+    // NEW 6 + 7: from the same key states as the Key Board
+    var movedTiles = b.Keys.Where(k => k.State != KeyTileState.OnBoard).ToList();
+    var backTiles = b.Keys.Where(k => k.State == KeyTileState.Returned).ToList();
+    var stillOut = b.Keys.Where(k => k.State is KeyTileState.Out or KeyTileState.OutProblem or KeyTileState.Overdue or KeyTileState.NotReturned)
+                         .OrderBy(k => KeyCustodyQueries.Group(k) == "attention" ? 0 : 1).ThenBy(k => k.Since).ToList();
+    int backPct = movedTiles.Count == 0 ? 0 : 100 * backTiles.Count / movedTiles.Count;
+    string MapClass(KeyTile k) => k.State switch
+    {
+        KeyTileState.Out => "km--out",
+        KeyTileState.Returned => "km--back",
+        KeyTileState.OutProblem => "km--bad",
+        KeyTileState.Overdue or KeyTileState.NotReturned => "km--late",
+        _ => ""
+    };
+    string MapText(KeyTile k) => k.State switch
+    {
+        KeyTileState.OnBoard => "on board",
+        KeyTileState.Returned => $"returned {k.Since:HH:mm}",
+        KeyTileState.Out => $"out with {k.Holder} since {k.Since:HH:mm}",
+        KeyTileState.OutProblem => k.LastResult == KcResult.NoFace ? $"taken {k.Since:HH:mm} — no face" : $"taken {k.Since:HH:mm} by {k.Holder} — NOT authorized",
+        KeyTileState.Overdue => $"OVERDUE — {k.Holder} since {k.Since:HH:mm}",
+        _ => $"not returned — last {k.Holder}"
+    };
 }
 
-@* Refresh TIme  300s = 5mints *@
-<meta http-equiv="refresh" content="600"> 
-
 <style>
-    #Title { font-size: 30px; }
-
     .stat-card {
         border: 2px solid transparent;
         border-radius: 0.75rem;
@@ -19,396 +49,514 @@
         padding: 0;
         background-clip: padding-box;
     }
+    .card.border-primary-gradient { box-shadow: 0 0 0 2px #0d6efd !important; border-radius: 0.75rem !important; }
+    .card.border-success-gradient { box-shadow: 0 0 0 2px #198754 !important; border-radius: 0.75rem !important; }
+    .card.border-warning-gradient { box-shadow: 0 0 0 2px #ffc107 !important; border-radius: 0.75rem !important; }
+    .card.border-danger-gradient  { box-shadow: 0 0 0 2px #dc3545 !important; border-radius: 0.75rem !important; }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
+    .stat-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+    .chart-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: #6c757d; }
+    .chart-legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dash-date { max-width: 190px; }
 
-    .print-icon {
-        position: absolute;
-        bottom: 10px;
-        right: 12px;
-        font-size: 1.2rem;
-        cursor: pointer;
-        opacity: 0.7;
-        transition: 0.2s;
-    }
+    /* compact alert strip */
+    .dash-alert { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #f8d7da; border: 2px solid #dc3545;
+                  border-radius: .75rem; padding: 12px 16px; margin-bottom: 16px; }
+    .dash-alert__icon { font-size: 1.8rem; color: #b02a37; line-height: 1; }
+    .dash-alert__text { flex: 1 1 220px; color: #58151c; }
+    .dash-alert__title { font-weight: 700; }
+    .dash-alert .btn { padding: .3rem .8rem; font-size: .85rem; }
+    .dash-ok { display: flex; align-items: center; gap: 10px; background: #d1e7dd; border: 2px solid #198754; color: #0a3622;
+               border-radius: .75rem; padding: 12px 16px; margin-bottom: 16px; font-weight: 600; }
 
+    /* live scans panel */
+    .live-card { height: 100%; }
+    .live-head { display: flex; justify-content: space-between; align-items: center; }
+    .live-dot { width: 9px; height: 9px; border-radius: 50%; background: #dc3545; display: inline-block; margin-right: 6px;
+                animation: livePulse 1.4s infinite; }
+    @@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(220,53,69,.6); } 70% { box-shadow: 0 0 0 8px rgba(220,53,69,0); } 100% { box-shadow: 0 0 0 0 rgba(220,53,69,0); } }
+    .live-list { max-height: 520px; overflow-y: auto; }
+    .live-item { display: flex; gap: 12px; align-items: center; padding: 10px 14px; border-left: 5px solid #198754;
+                 border-bottom: 1px solid #f1f3f5; text-decoration: none; color: inherit; transition: background .2s; }
+    .live-item:hover { background: #f8f9fa; color: inherit; }
+    .live-item--NOT_AUTHORIZED { border-left-color: #dc3545; background: #fff5f5; }
+    .live-item--NO_FACE { border-left-color: #fd7e14; background: #fff9f2; }
+    .live-item--new { animation: liveNew 2.5s ease; }
+    @@keyframes liveNew { 0% { background: #fff3cd; } 100% { } }
+    .live-photo { width: 58px; height: 58px; border-radius: 10px; object-fit: cover; flex: 0 0 auto; background: #dee2e6;
+                  display: flex; align-items: center; justify-content: center; font-weight: 700; color: #495057; position: relative; overflow: hidden; }
+    .live-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .live-photo--none { background: #fde2c8; color: #b35900; font-size: 1.4rem; }
+    .live-main { flex: 1; min-width: 0; }
+    .live-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .live-sub { font-size: .85rem; color: #495057; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; }
+    .live-time { font-size: .8rem; color: #6c757d; text-align: right; white-space: nowrap; }
+
+    /* spotlight: the most recent scan, big */
+    .live-spot { display: flex; gap: 18px; align-items: center; padding: 16px 18px; margin: 0 14px 12px; border-radius: 12px;
+                 text-decoration: none; color: inherit; border: 2px solid #198754; background: #f0f9f4; }
+    .live-spot:hover { color: inherit; box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+    .live-spot--NOT_AUTHORIZED { border-color: #dc3545; background: #fff1f2; }
+    .live-spot--NO_FACE { border-color: #fd7e14; background: #fff7ed; }
+    .live-spot--new { animation: spotNew 1.8s ease; }
+    @@keyframes spotNew { 0% { transform: scale(.97); box-shadow: 0 0 0 6px rgba(255,193,7,.6); } 100% { transform: none; box-shadow: none; } }
+    .live-spot .live-photo { width: 112px; height: 112px; border-radius: 14px; font-size: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .live-spot__label { font-size: .72rem; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6c757d; }
+    .live-spot__name { font-size: 1.35rem; font-weight: 700; line-height: 1.2; margin: 2px 0 6px; }
+    .live-spot__key { font-size: 1.05rem; margin-bottom: 6px; }
+    .live-spot__verdict { font-size: .95rem; font-weight: 700; }
+    .live-spot--OK .live-spot__verdict { color: #146c43; }
+    .live-spot--NOT_AUTHORIZED .live-spot__verdict { color: #b02a37; }
+    .live-spot--NO_FACE .live-spot__verdict { color: #b35900; }
+
+    /* print icon on the cards (as before) */
+    .print-icon { position: absolute; bottom: 10px; right: 12px; font-size: 1.2rem; cursor: pointer; opacity: 0.7; transition: 0.2s; text-decoration: none; }
     .print-icon:hover { opacity: 1; transform: scale(1.1); }
 
-    /* REPLACE with */
-.card.border-primary-gradient { box-shadow: 0 0 0 2px #0d6efd !important; border-radius: 0.75rem !important; }
-.card.border-success-gradient { box-shadow: 0 0 0 2px #198754 !important; border-radius: 0.75rem !important; }
-.card.border-warning-gradient { box-shadow: 0 0 0 2px #ffc107 !important; border-radius: 0.75rem !important; }
-.card.border-danger-gradient  { box-shadow: 0 0 0 2px #dc3545 !important; border-radius: 0.75rem !important; }
+    /* NEW 6: closing status */
+    .close-big { font-size: 1.5rem; font-weight: 700; }
+    .close-prog { height: 16px; border-radius: 10px; background: #eef1f4; overflow: hidden; display: flex; margin: 8px 0 4px; }
+    .close-prog span { height: 100%; }
+    .close-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f1f3f5; text-decoration: none; color: inherit; font-size: .9rem; }
+    .close-row:hover { background: #f8f9fa; color: inherit; }
+    .close-late { color: #b35900; font-weight: 700; }
 
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.2);
-    }
-
-    .stat-icon {
-        width: 50px; height: 50px;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.25rem;
-    }
-
-    .table-hover tbody tr { border-bottom: 1px solid #dee2e6; }
-    .alert-danger { border: 2px solid #dc3545; }
-
-    /* Chart card */
-    .chart-legend span {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 13px;
-        color: #6c757d;
-    }
-
-    .chart-legend .dot {
-        width: 10px; height: 10px;
-        border-radius: 50%;
-        display: inline-block;
-    }
+    /* NEW 7: mini key map */
+    .kmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(20px, 1fr)); gap: 4px; }
+    .kmap a { aspect-ratio: 1; border-radius: 4px; background: #dee2e6; display: block; transition: transform .1s; }
+    .kmap a:hover { transform: scale(1.35); box-shadow: 0 2px 6px rgba(0,0,0,.3); position: relative; z-index: 1; }
+    .kmap a.km--out { background: #0d6efd; } .kmap a.km--back { background: #198754; }
+    .kmap a.km--bad { background: #dc3545; } .kmap a.km--late { background: #fd7e14; }
+    .kmap-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: .78rem; color: #6c757d; margin-top: 10px; }
+    .kmap-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+    #kmapHover { min-height: 1.4em; font-size: .85rem; margin-top: 8px; }
 </style>
 
-@* <!-- Page Header -->
-<div class="row mb-4">
-    <div class="col-12">
-        <h1 id="Title" class="display-5 fw-bold d-flex align-items-center gap-2">
-            <img src="~/images/emblem_transparent.png" alt="MoD Emblem"
-                 style="height:45px; width:auto; filter: brightness(0) saturate(100%) invert(18%) sepia(90%) saturate(600%) hue-rotate(100deg) brightness(60%);" />
-            MoD Intelligent Key Management System
-        </h1>
-        <p class="text-muted">Real-time monitoring of key management activities</p>
-    </div>
-</div> *@
+<!-- Date (today by default) -->
+<div class="d-flex flex-wrap justify-content-end align-items-center gap-2 mb-3">
+    <span class="text-muted small">@(b.IsToday ? "Today" : "Showing") — @b.Date.ToString("dddd, dd MMM yyyy")</span>
+    <form method="get" class="m-0">
+        <input type="date" name="date" class="form-control form-control-sm dash-date" value="@dateStr" onchange="this.form.submit()" aria-label="Date" />
+    </form>
+    <a asp-controller="Security" asp-action="DailyReport" asp-route-date="@dateStr" asp-route-print="true" target="_blank" class="btn btn-sm btn-success" title="Print the Daily Security Report">
+        <i class="bi bi-printer"></i> Daily report
+    </a>
+    <a asp-controller="Security" asp-action="Monitor" target="_blank" class="btn btn-sm btn-dark" title="Full-screen live monitor for a TV or second screen">
+        <i class="bi bi-display"></i> Monitor mode
+    </a>
+</div>
 
 <!-- Statistics Cards -->
 <div class="row g-4 mb-4">
-
-    <!-- Total Keys -->
     <div class="col-md-3">
-        <a asp-controller="Keys" asp-action="Index" style="text-decoration:none; color:inherit;">
+        <a asp-controller="Security" asp-action="Index" asp-route-date="@dateStr" style="text-decoration:none; color:inherit;">
             <div class="card shadow-sm h-100 stat-card border-primary-gradient">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1">Total Keys</p>
-                            <h2 class="fw-bold mb-0">@Model.TotalKeys</h2>
-                        </div>
-                        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                            <i class="bi bi-key-fill"></i>
-                        </div>
+                        <div><p class="text-muted mb-1">Total Keys</p><h2 class="fw-bold mb-0">@b.Keys.Count</h2></div>
+                        <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-key-fill"></i></div>
                     </div>
                 </div>
             </div>
         </a>
     </div>
-
-    <!-- Total Employees -->
     <div class="col-md-3">
         <a asp-controller="Employees" asp-action="Index" style="text-decoration:none; color:inherit;">
             <div class="card shadow-sm h-100 stat-card border-success-gradient">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1">Total Employees</p>
-                            <h2 class="fw-bold mb-0">@Model.TotalEmployees</h2>
-                        </div>
-                        <div class="stat-icon bg-success bg-opacity-10 text-success">
-                            <i class="bi bi-people-fill"></i>
-                        </div>
+                        <div><p class="text-muted mb-1">Total Employees</p><h2 class="fw-bold mb-0">@Model.TotalEmployees</h2></div>
+                        <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-people-fill"></i></div>
                     </div>
                 </div>
             </div>
         </a>
     </div>
-
-    <!-- Keys Not Taken -->
     <div class="col-md-3">
         <div class="card shadow-sm h-100 stat-card border-warning-gradient">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="text-muted mb-1">Keys Not Taken</p>
-                        <h2 class="fw-bold mb-0 text-warning">@Model.KeysNotTakenToday</h2>
-                    </div>
-                    <div class="stat-icon bg-warning bg-opacity-10 text-warning">
-                        <i class="bi bi-exclamation-circle-fill"></i>
-                    </div>
+                    <div><p class="text-muted mb-1">Keys Not Taken</p><h2 class="fw-bold mb-0 text-warning">@notTaken</h2></div>
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-exclamation-circle-fill"></i></div>
                 </div>
-                <a asp-controller="Reports" asp-action="MorningKeysNotTaken"
-                   class="btn btn-sm btn-warning mt-2"
-                   onclick="event.stopPropagation()">View Details</a>
-                <i class="bi bi-printer-fill text-warning print-icon"
-                   onclick="event.stopPropagation(); window.open('@Url.Action("MorningKeysNotTaken","Reports")?print=true','_blank')"></i>
+                <a asp-controller="Security" asp-action="Index" asp-route-date="@dateStr" asp-route-filter="board"
+                   class="btn btn-sm btn-warning mt-2">View Details</a>
+                <a class="bi bi-printer-fill text-warning print-icon" title="Print keys not taken" aria-label="Print keys not taken"
+                   asp-controller="Security" asp-action="KeyList" asp-route-list="nottaken" asp-route-date="@dateStr" asp-route-print="true" target="_blank"></a>
             </div>
         </div>
     </div>
-
-    <!-- Keys Not Returned -->
     <div class="col-md-3">
         <div class="card shadow-sm h-100 stat-card border-danger-gradient">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="text-muted mb-1">Keys Not Returned</p>
-                        <h2 class="fw-bold mb-0 text-danger">@Model.KeysNotReturnedToday</h2>
-                    </div>
-                    <div class="stat-icon bg-danger bg-opacity-10 text-danger">
-                        <i class="bi bi-arrow-return-left"></i>
-                    </div>
+                    <div><p class="text-muted mb-1">Keys Not Returned</p><h2 class="fw-bold mb-0 text-danger">@notReturned</h2></div>
+                    <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-arrow-return-left"></i></div>
                 </div>
-                <a asp-controller="Reports" asp-action="EveningKeysNotReturned"
+                <a asp-controller="Security" asp-action="Index" asp-route-date="@dateStr" asp-route-filter="notreturned"
                    class="btn btn-sm btn-danger mt-2">View Details</a>
-                <i class="bi bi-printer-fill text-danger print-icon"
-                   onclick="event.stopPropagation(); window.open('@Url.Action("EveningKeysNotReturned","Reports")?print=true','_blank')"></i>
+                <a class="bi bi-printer-fill text-danger print-icon" title="Print keys still out" aria-label="Print keys still out"
+                   asp-controller="Security" asp-action="KeyList" asp-route-list="out" asp-route-date="@dateStr" asp-route-print="true" target="_blank"></a>
+                @if (G("attention") > 0)
+                {
+                    <span class="small text-danger ms-2">@G("attention") need attention</span>
+                }
             </div>
         </div>
     </div>
 </div>
 
-<!-- Unauthorized Alert -->
 <div class="row g-4 mb-4">
-    @if (Model.UnauthorizedAccessToday > 0)
-    {
-        <div class="col-12">
-            <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center" role="alert">
-                <i class="bi bi-shield-exclamation fs-3 me-3"></i>
-                <div class="flex-grow-1">
-                    <h5 class="alert-heading mb-1">⚠️ Unauthorized Access Detected!</h5>
-                    <p class="mb-2">
-                        <strong>@Model.UnauthorizedAccessToday</strong>
-                        unauthorized key access(es) recorded today.
-                    </p>
-                    <a asp-controller="Reports" asp-action="UnauthorizedAccess"
-                       class="btn btn-sm btn-danger">View Alert Details</a>
+    <!-- LEFT: alert strip + chart -->
+    <div class="col-xl-7 d-flex flex-column">
+        @if (problems > 0)
+        {
+            <div class="dash-alert" role="alert">
+                <i class="bi bi-shield-exclamation dash-alert__icon"></i>
+                <div class="dash-alert__text">
+                    <div class="dash-alert__title">⚠️ Unauthorized Access Detected!</div>
+                    <div class="small"><strong>@problems</strong> problem scan(s) @(b.IsToday ? "today" : "on this day") —
+                        <strong>@Model.ScansWrongPerson</strong> wrong person, <strong>@Model.ScansNoFace</strong> no face</div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a asp-controller="Security" asp-action="Incidents" asp-route-from="@dateStr" asp-route-to="@dateStr" class="btn btn-danger">Details</a>
+                    <a asp-controller="Security" asp-action="Log" asp-route-date="@dateStr" asp-route-result="@KcResult.NotAuthorized" class="btn btn-outline-danger bg-white">Wrong person @Model.ScansWrongPerson</a>
+                    <a asp-controller="Security" asp-action="Log" asp-route-date="@dateStr" asp-route-result="@KcResult.NoFace" class="btn btn-outline-danger bg-white">No face @Model.ScansNoFace</a>
                 </div>
             </div>
-        </div>
-    }
-</div>
+        }
+        else
+        {
+            <div class="dash-ok"><i class="bi bi-shield-check fs-4"></i> No unauthorized key access @(b.IsToday ? "today" : "on this day").</div>
+        }
 
-<!-- *** DAILY ACTIVITY SPIKE CHART *** -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm kc-static flex-grow-1">
             <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h5 class="mb-0 fw-bold">
-                    <i class="bi bi-activity text-primary"></i>
-                    Daily Activity — Hourly Spikes
-                </h5>
+                <h5 class="mb-0 fw-bold"><i class="bi bi-activity text-primary"></i> Daily Activity — Hourly Spikes</h5>
                 <div class="chart-legend d-flex gap-3 flex-wrap">
                     <span><span class="dot" style="background:#185FA5;"></span> Key Out</span>
                     <span><span class="dot" style="background:#0F6E56;"></span> Key Returned</span>
                     <span><span class="dot" style="background:#A32D2D;"></span> Unauthorized</span>
                 </div>
             </div>
-            <div class="card-body">
-                <div style="position: relative; width: 100%; height: 280px;">
+            <div class="card-body pt-0">
+                <div style="position: relative; width: 100%; height: 330px;">
                     <canvas id="activityChart"></canvas>
                 </div>
-                <p class="text-muted text-end mb-0 mt-2" style="font-size:12px;">
-                    Showing today's activity by hour — hover for details
-                </p>
+                <p class="text-muted text-end mb-0 mt-2" style="font-size:12px;">Click a bar to see those scans</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: live scans with faces -->
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm kc-static live-card">
+            <div class="card-header bg-white border-0 py-3 live-head">
+                <h5 class="mb-0 fw-bold">
+                    @if (b.IsToday) { <span class="live-dot" aria-hidden="true"></span> }
+                    @(b.IsToday ? "Live Scans" : "Last Scans of the Day")
+                </h5>
+                <a class="small" asp-controller="Security" asp-action="Log" asp-route-date="@dateStr">Full key log <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <!-- Spotlight: the most recent scan -->
+            <div id="liveSpot">
+                @if (Model.Latest.Count > 0)
+                {
+                    var s = Model.Latest[0];
+                    var verdict = s.Result == KcResult.Ok ? "✔ Authorized for this key"
+                                : s.Result == KcResult.NotAuthorized ? "✖ NOT authorized for this key"
+                                : "⚠ Key scanned without a face";
+                    <a class="live-spot live-spot--@s.Result" data-id="@s.Id" href="@Url.Action("Movement", "Security", new { id = s.Id })">
+                        @if (s.FaceEnroll != null)
+                        {
+                            <span class="live-photo">@(string.Concat((s.FaceName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w[0])))
+                                <img src="@Url.Action("Photo", "Security", new { id = s.FaceEnroll })" alt="" onerror="this.remove()" /></span>
+                        }
+                        else
+                        {
+                            <span class="live-photo live-photo--none"><i class="bi bi-person-x"></i></span>
+                        }
+                        <span class="flex-grow-1" style="min-width:0">
+                            <span class="live-spot__label d-block">Last scan · @s.ScanTime.ToString("HH:mm:ss")</span>
+                            <span class="live-spot__name d-block">@(s.FaceName ?? "No face scanned")</span>
+                            <span class="live-spot__key d-block"><i class="bi bi-key-fill text-primary"></i> <strong>@Short(s.KeyName)</strong>
+                                <partial name="~/Views/Security/_Direction.cshtml" model="s.Direction" /></span>
+                            <span class="live-spot__verdict d-block">@verdict</span>
+                        </span>
+                    </a>
+                }
+            </div>
+
+            <div class="live-list" id="liveList">
+                @if (Model.Latest.Count == 0)
+                {
+                    <div class="text-center text-muted py-5" id="liveEmpty"><i class="bi bi-inbox display-6 d-block"></i>No key scans yet.</div>
+                }
+                @foreach (var e in Model.Latest.Skip(1))
+                {
+                    <a class="live-item live-item--@e.Result" data-id="@e.Id" href="@Url.Action("Movement", "Security", new { id = e.Id })">
+                        @if (e.FaceEnroll != null)
+                        {
+                            <span class="live-photo">@(string.Concat((e.FaceName ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => w[0])))
+                                <img src="@Url.Action("Photo", "Security", new { id = e.FaceEnroll })" alt="" onerror="this.remove()" /></span>
+                        }
+                        else
+                        {
+                            <span class="live-photo live-photo--none"><i class="bi bi-person-x"></i></span>
+                        }
+                        <span class="live-main">
+                            <span class="live-name d-block">@(e.FaceName ?? "No face scanned")</span>
+                            <span class="live-sub">
+                                <span><i class="bi bi-key-fill text-primary"></i> <strong>@Short(e.KeyName)</strong></span>
+                                <partial name="~/Views/Security/_Direction.cshtml" model="e.Direction" />
+                                <partial name="~/Views/Security/_Result.cshtml" model="e.Result" />
+                            </span>
+                        </span>
+                        <span class="live-time">@e.ScanTime.ToString("HH:mm:ss")</span>
+                    </a>
+                }
             </div>
         </div>
     </div>
 </div>
 
-<!-- Recent Activity -->
-<div class="row">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 py-3">
-                <h5 class="mb-0 fw-bold">
-                    <i class="bi bi-clock-history text-primary"></i>
-                    Recent Activity Today
-                </h5>
+<!-- NEW 6 + NEW 7 -->
+<div class="row g-4 mb-4">
+    <!-- NEW 6: closing status -->
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm kc-static h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-moon-stars text-primary"></i> Closing status</h5>
+                <span class="small text-muted">keys due back by @Model.ClosingHour.ToString("00"):00</span>
             </div>
-            <div class="card-body p-0">
-                @if (Model.RecentActivities.Any())
+            <div class="card-body pt-0">
+                @if (movedTiles.Count == 0)
                 {
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Key</th>
-                                    <th>Employee</th>
-                                    <th>Action</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var activity in Model.RecentActivities)
-                                {
-                                    <tr class="@(activity.IsUnauthorized ? "table-danger" : "")">
-                                        <td><i class="bi bi-clock text-muted me-1"></i>@activity.Time</td>
-                                        <td><i class="bi bi-key text-primary me-1"></i><strong>@activity.KeyName</strong></td>
-                                        <td><i class="bi bi-person text-success me-1"></i>@activity.Employee</td>
-                                        <td>
-                                            @if (activity.Action.Contains("OUT"))
-                                            {
-                                                <span class="badge bg-info">
-                                                    <i class="bi bi-box-arrow-right"></i> @activity.Action
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-success">
-                                                    <i class="bi bi-box-arrow-in-left"></i> @activity.Action
-                                                </span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (activity.IsUnauthorized)
-                                            {
-                                                <span class="badge bg-danger">
-                                                    <i class="bi bi-x-circle"></i> UNAUTHORIZED
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-success">
-                                                    <i class="bi bi-check-circle"></i> Authorized
-                                                </span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    <p class="text-muted mb-0">No keys taken @(b.IsToday ? "yet today" : "on this day").</p>
                 }
                 else
                 {
-                    <div class="text-center py-5">
-                        <i class="bi bi-inbox display-1 text-muted"></i>
-                        <p class="text-muted mt-3">No activity recorded today</p>
+                    <div class="close-big">@backTiles.Count of @movedTiles.Count keys back</div>
+                    <div class="close-prog" role="img" aria-label="@backPct percent of keys back">
+                        <span style="width:@backPct%;background:#198754"></span><span style="width:@(100 - backPct)%;background:#fd7e14"></span>
                     </div>
+                    <div class="small mb-2" id="closeCountdown" data-closing="@Model.ClosingHour" data-today="@(b.IsToday ? "1" : "0")">
+                        @stillOut.Count still out@(b.IsToday ? "" : " at the end of the day")
+                    </div>
+                    @foreach (var k in stillOut.Take(6))
+                    {
+                        <a class="close-row" asp-controller="Security" asp-action="Key" asp-route-id="@k.KeyEnroll" asp-route-date="@dateStr">
+                            <span><strong>@Short(k.KeyName)</strong> · @(k.Holder ?? "Unknown")</span>
+                            @if (k.State == KeyTileState.OutProblem)
+                            {
+                                <span class="badge @(k.LastResult == KcResult.NoFace ? "bg-warning text-dark" : "bg-danger")">@(k.LastResult == KcResult.NoFace ? "no face" : "wrong person")</span>
+                            }
+                            else if (k.State is KeyTileState.Overdue or KeyTileState.NotReturned)
+                            {
+                                <span class="badge bg-warning text-dark">@(k.State == KeyTileState.Overdue ? "overdue" : "not returned")</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary">since @k.Since?.ToString("HH:mm")</span>
+                            }
+                        </a>
+                    }
+                    @if (stillOut.Count > 6)
+                    {
+                        <a class="small d-inline-block mt-2" asp-controller="Security" asp-action="Index" asp-route-date="@dateStr" asp-route-filter="notreturned">+ @(stillOut.Count - 6) more still out →</a>
+                    }
+                    else if (stillOut.Count == 0)
+                    {
+                        <div class="text-success fw-bold mt-1"><i class="bi bi-check-circle-fill"></i> All keys are back.</div>
+                    }
                 }
             </div>
-            <div class="card-footer bg-white border-0 text-center">
-                <a asp-controller="Reports" asp-action="FullDailyLog"
-                   class="btn btn-link text-decoration-none">
-                    View Full Daily Log <i class="bi bi-arrow-right"></i>
-                </a>
+        </div>
+    </div>
+
+    <!-- NEW 7: mini key map -->
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm kc-static h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-grid-3x3-gap-fill text-primary"></i> All keys at a glance</h5>
+                <a class="small" asp-controller="Security" asp-action="Index" asp-route-date="@dateStr">Key Board <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="card-body pt-0">
+                <div class="kmap" id="kmap">
+                    @foreach (var k in b.Keys.OrderBy(k => k.KeyName))
+                    {
+                        <a class="@MapClass(k)" href="@Url.Action("Key", "Security", new { id = k.KeyEnroll, date = dateStr })"
+                           title="@Short(k.KeyName) — @MapText(k)" data-info="@Short(k.KeyName) — @MapText(k)" aria-label="@Short(k.KeyName) — @MapText(k)"></a>
+                    }
+                </div>
+                <div id="kmapHover" class="text-muted">Point at a square to see the key; click to open it.</div>
+                <div class="kmap-legend">
+                    <span><i style="background:#dee2e6"></i>On board @G("board")</span>
+                    <span><i style="background:#0d6efd"></i>Out @G("out")</span>
+                    <span><i style="background:#198754"></i>Returned @G("returned")</span>
+                    <span><i style="background:#dc3545"></i>No face / wrong person @b.Keys.Count(k => k.State == KeyTileState.OutProblem)</span>
+                    <span><i style="background:#fd7e14"></i>Overdue / not returned @b.Keys.Count(k => k.State is KeyTileState.Overdue or KeyTileState.NotReturned)</span>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
+<script>
+    // NEW 7: show the hovered key under the map
+    (function () {
+        var info = document.getElementById('kmapHover');
+        document.querySelectorAll('#kmap a').forEach(function (a) {
+            a.addEventListener('mouseenter', function () { info.textContent = a.dataset.info; info.classList.remove('text-muted'); });
+            a.addEventListener('focus', function () { info.textContent = a.dataset.info; });
+        });
+    })();
+    // NEW 6: countdown to closing time (today only)
+    (function () {
+        var el = document.getElementById('closeCountdown');
+        if (!el || el.dataset.today !== '1') return;
+        var base = el.textContent.trim();
+        function tick() {
+            var now = new Date(), close = new Date();
+            close.setHours(parseInt(el.dataset.closing, 10), 0, 0, 0);
+            var mins = Math.round((close - now) / 60000);
+            var txt = mins > 0
+                ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm to closing'
+                : Math.floor(-mins / 60) + 'h ' + (-mins % 60) + 'm after closing';
+            el.innerHTML = base + ' · <span class="' + (mins > 0 ? '' : 'close-late') + '">' + txt + '</span>';
+        }
+        tick(); setInterval(tick, 30000);
+    })();
+</script>
 <script src="~/lib/chartjs/chart.umd.js"></script>
 <script>
-    // Data from server
-   const hourLabels = [
-    '00:00','01:00','02:00','03:00','04:00','05:00',
-    '06:00','07:00','08:00','09:00','10:00','11:00',
-    '12:00','13:00','14:00','15:00','16:00','17:00',
-    '18:00','19:00','20:00','21:00','22:00','23:00'
-];
-    const keyOut        = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HourlyKeyOut));
-    const keyReturned   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HourlyKeyReturned));
-    const unauthorized  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.HourlyUnauthorized));
+    const hourLabels = Array.from({ length: 24 }, (_, h) => (h < 10 ? '0' : '') + h + ':00');
+    const keyOut       = @Json.Serialize(Model.HourOut);
+    const keyReturned  = @Json.Serialize(Model.HourIn);
+    const unauthorized = @Json.Serialize(Model.HourProblem);
+    const logUrl = '@Url.Action("Log", "Security")?date=@dateStr&hour=';
 
-   new Chart(document.getElementById('activityChart'), {
-    type: 'bar',
-    data: {
-        labels: hourLabels,
-        datasets: [
-            {
-                label: 'Key Out',
-                data: keyOut,
-                backgroundColor: 'rgba(24,95,165,0.75)',
-                borderColor: '#185FA5',
-                borderWidth: 1,
-                borderRadius: 4,
-                order: 2
-            },
-            {
-                label: 'Key Returned',
-                data: keyReturned,
-                backgroundColor: 'rgba(15,110,86,0.70)',
-                borderColor: '#0F6E56',
-                borderWidth: 1,
-                borderRadius: 4,
-                order: 3
-            },
-            {
-                label: 'Unauthorized',
-                data: unauthorized,
-                type: 'line',
-                borderColor: '#A32D2D',
-                backgroundColor: 'rgba(163,45,45,0.10)',
-                pointBackgroundColor: unauthorized.map(v => v > 0 ? '#A32D2D' : 'transparent'),
-                pointBorderColor:     unauthorized.map(v => v > 0 ? '#A32D2D' : 'transparent'),
-                pointRadius:          unauthorized.map(v => v > 0 ? 8 : 0),
-                pointHoverRadius:     10,
-                borderWidth: 2,
-                fill: false,
-                tension: 0.3,
-                order: 1
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        // 👇 make cursor a pointer over bars
-        onHover: function(event, elements) {
-            event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+    new Chart(document.getElementById('activityChart'), {
+        type: 'bar',
+        data: {
+            labels: hourLabels,
+            datasets: [
+                { label: 'Key Out', data: keyOut, backgroundColor: 'rgba(24,95,165,0.75)', borderColor: '#185FA5', borderWidth: 1, borderRadius: 4, order: 2 },
+                { label: 'Key Returned', data: keyReturned, backgroundColor: 'rgba(15,110,86,0.70)', borderColor: '#0F6E56', borderWidth: 1, borderRadius: 4, order: 3 },
+                {
+                    label: 'Unauthorized', data: unauthorized, type: 'line',
+                    borderColor: '#A32D2D', backgroundColor: 'rgba(163,45,45,0.10)',
+                    pointBackgroundColor: unauthorized.map(v => v > 0 ? '#A32D2D' : 'transparent'),
+                    pointBorderColor: unauthorized.map(v => v > 0 ? '#A32D2D' : 'transparent'),
+                    pointRadius: unauthorized.map(v => v > 0 ? 7 : 0),
+                    pointHoverRadius: 9, borderWidth: 2, fill: false, tension: 0.3, order: 1
+                }
+            ]
         },
-        // 👇 drill-down on click
-        onClick: function(event, elements) {
-            if (!elements.length) return;
-            var index     = elements[0].index;          // 0-14 → maps to hour 6-20
-            var hour      = index;                  // convert index to real hour
-            var today     = new Date().toISOString().split('T')[0]; // yyyy-MM-dd
-            window.location.href = '/Reports/HourlyDrillDown?date=' + today + '&hour=' + hour;
-        },
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    title: function(items) {
-                        return items[0].label + '  —  click to drill down';
-                    },
-                    label: function(ctx) {
-                        if (ctx.dataset.label === 'Unauthorized' && ctx.raw === 0) return null;
-                        return '  ' + ctx.dataset.label + ': ' + ctx.raw;
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onHover: function (event, elements) { event.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+            onClick: function (event, elements) { if (elements.length) window.location.href = logUrl + elements[0].index; },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: function (items) { return items[0].label + '  —  click to see the scans'; },
+                        label: function (ctx) {
+                            if (ctx.dataset.label === 'Unauthorized' && ctx.raw === 0) return null;
+                            return '  ' + ctx.dataset.label + ': ' + ctx.raw;
+                        }
                     }
                 }
-            }
-        },
-        scales: {
-            x: {
-                grid: { color: 'rgba(128,128,128,0.1)' },
-                ticks: { font: { size: 11 }, color: '#6c757d', maxRotation: 0 }
             },
-            y: {
-                beginAtZero: true,
-                grid: { color: 'rgba(128,128,128,0.1)' },
-                ticks: {
-                    font: { size: 11 }, color: '#6c757d', stepSize: 1,
-                    callback: v => Number.isInteger(v) ? v : ''
-                }
+            scales: {
+                x: { grid: { color: 'rgba(128,128,128,0.1)' }, ticks: { font: { size: 10 }, color: '#6c757d', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+                y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,0.1)' },
+                     ticks: { font: { size: 11 }, color: '#6c757d', stepSize: 1, callback: v => Number.isInteger(v) ? v : '' } }
             }
         }
-    }
-});
-
-   // Show cards — works with or without jQuery
-document.addEventListener('DOMContentLoaded', function () {
-    var cards = document.querySelectorAll('.stat-card');
-    cards.forEach(function (card, index) {
-        setTimeout(function () {
-            card.style.display = 'block';
-            card.style.opacity = '0';
-            card.style.transition = 'opacity 0.3s ease';
-            setTimeout(function () { card.style.opacity = '1'; }, 50);
-        }, 100 * index);
     });
-});
+
+    // Show cards with the original fade-in
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.stat-card').forEach(function (card, index) {
+            setTimeout(function () {
+                card.style.display = 'block';
+                card.style.opacity = '0';
+                card.style.transition = 'opacity 0.3s ease';
+                setTimeout(function () { card.style.opacity = '1'; }, 50);
+            }, 100 * index);
+        });
+    });
+
+    @if (b.IsToday)
+    {
+        <text>
+    // ── Live scans: refresh the right panel every 10 seconds without reloading the page ──
+    (function () {
+        var list = document.getElementById('liveList');
+        var feedUrl = '@Url.Action("Feed", "Security")?date=@dateStr&take=9';
+        var photoUrl = '@Url.Action("Photo", "Security")/';
+        function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+        function initials(n) { return (n || '?').split(' ').filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join(''); }
+        var dir = { OUT: '<span class="badge bg-primary"><i class="bi bi-box-arrow-up-right"></i> Taken</span>',
+                    IN: '<span class="badge bg-secondary"><i class="bi bi-box-arrow-in-down-left"></i> Returned</span>' };
+        var res = { OK: '<span class="badge bg-success">Authorized</span>',
+                    NOT_AUTHORIZED: '<span class="badge bg-danger">Wrong person</span>',
+                    NO_FACE: '<span class="badge bg-warning text-dark">No face</span>' };
+        var spot = document.getElementById('liveSpot');
+        var verdicts = { OK: '✔ Authorized for this key', NOT_AUTHORIZED: '✖ NOT authorized for this key', NO_FACE: '⚠ Key scanned without a face' };
+        function photoOf(e) {
+            return e.personEnroll
+                ? '<span class="live-photo">' + esc(initials(e.person)) + '<img src="' + photoUrl + e.personEnroll + '" alt="" onerror="this.remove()"></span>'
+                : '<span class="live-photo live-photo--none"><i class="bi bi-person-x"></i></span>';
+        }
+        function renderSpot(e) {
+            var current = spot.querySelector('.live-spot');
+            var isNew = current && current.dataset.id !== String(e.id);
+            if (current && !isNew) return;   // same scan, nothing to change
+            spot.innerHTML = '<a class="live-spot live-spot--' + esc(e.result) + (isNew ? ' live-spot--new' : '') + '" data-id="' + e.id + '" href="' + esc(e.url) + '">' +
+                photoOf(e) +
+                '<span class="flex-grow-1" style="min-width:0">' +
+                '<span class="live-spot__label d-block">Last scan · ' + esc(e.time) + '</span>' +
+                '<span class="live-spot__name d-block">' + esc(e.person || 'No face scanned') + '</span>' +
+                '<span class="live-spot__key d-block"><i class="bi bi-key-fill text-primary"></i> <strong>' + esc(e.key) + '</strong> ' + (dir[e.direction] || '') + '</span>' +
+                '<span class="live-spot__verdict d-block">' + (verdicts[e.result] || '') + '</span>' +
+                '</span></a>';
+        }
+        function render(all) {
+            if (!all.length) return;
+            renderSpot(all[0]);
+            var items = all.slice(1);
+            var known = {};
+            list.querySelectorAll('.live-item').forEach(function (el) { known[el.dataset.id] = true; });
+            var hadItems = Object.keys(known).length > 0;
+            list.innerHTML = items.map(function (e) {
+                var photo = photoOf(e);
+                var isNew = hadItems && !known[e.id];
+                return '<a class="live-item live-item--' + esc(e.result) + (isNew ? ' live-item--new' : '') + '" data-id="' + e.id + '" href="' + esc(e.url) + '">' +
+                    photo +
+                    '<span class="live-main"><span class="live-name d-block">' + esc(e.person || 'No face scanned') + '</span>' +
+                    '<span class="live-sub"><span><i class="bi bi-key-fill text-primary"></i> <strong>' + esc(e.key) + '</strong></span>' +
+                    (dir[e.direction] || '') + (res[e.result] || '') + '</span></span>' +
+                    '<span class="live-time">' + esc(e.time) + '</span></a>';
+            }).join('');
+        }
+        function poll() {
+            fetch(feedUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (items) { if (items) render(items); })
+                .catch(function () { })
+                .finally(function () { setTimeout(poll, 10000); });
+        }
+        setTimeout(poll, 10000);
+        // the cards and chart refresh with a full reload every 2 minutes
+        setTimeout(function () { location.reload(); }, 120000);
+    })();
+        </text>
+    }
 </script>
 }

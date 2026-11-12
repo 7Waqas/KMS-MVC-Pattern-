@@ -1,0 +1,150 @@
+@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@model IncidentDetailViewModel
+@{
+    var i = Model.Incident;
+    ViewData["Title"] = $"Incident #{i.Id}";
+    string ResultBadge(string r) => r switch
+    {
+        KcResult.Ok => "bg-success",
+        KcResult.NotAuthorized => "bg-danger",
+        _ => "bg-warning text-dark"
+    };
+    string ResultText(string r) => r switch
+    {
+        KcResult.Ok => "Authorized",
+        KcResult.NotAuthorized => "Not authorized",
+        _ => "No face"
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <span class="badge kc-type kc-type--@i.Type mb-2">@KcIncidentType.Label(i.Type)</span>
+        <h1 class="h3 fw-bold mb-1">Incident #@i.Id — <a asp-action="Key" asp-route-id="@i.KeyEnroll" asp-route-date="@i.IncidentDate.ToString("yyyy-MM-dd")" class="text-decoration-none">@i.KeyName</a></h1>
+        <p class="text-muted mb-0">@i.IncidentDate.ToString("dddd, dd MMM yyyy") @(i.OccurredAt != null ? "at " + i.OccurredAt.Value.ToString("HH:mm:ss") : "")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+        <a class="btn btn-outline-secondary" asp-action="Incidents" asp-route-from="@i.IncidentDate.ToString("yyyy-MM-dd")" asp-route-to="@i.IncidentDate.ToString("yyyy-MM-dd")"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-3 kc-static">
+            <div class="card-body d-flex flex-wrap gap-4 align-items-start">
+                @if (i.PersonEnroll != null)
+                {
+                    <div class="text-center">
+                        <partial name="_Avatar" model="@((i.PersonEnroll, i.PersonName, "lg"))" />
+                        <div class="small fw-bold mt-2">@i.PersonName</div>
+                        <div class="small text-muted">@(i.Type == KcIncidentType.NotAuthorized || i.Type == KcIncidentType.ReturnNotScanned ? "Scanned the key" : "Top suspect")</div>
+                    </div>
+                }
+                <div class="flex-grow-1" style="min-width: 260px">
+                <h5 class="fw-bold">What happened</h5>
+                <p class="fs-5 mb-3">@i.Summary</p>
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4">Authorized for this key</dt>
+                    <dd class="col-sm-8">@(i.AuthorizedPersons ?? "--")</dd>
+                    <dt class="col-sm-4">Responsible / top suspect</dt>
+                    <dd class="col-sm-8">@(i.PersonName ?? "Unknown")</dd>
+                    <dt class="col-sm-4">Severity</dt>
+                    <dd class="col-sm-8">@(i.Severity == 1 ? "High" : i.Severity == 2 ? "Medium" : "Low")</dd>
+                </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3 kc-static">
+            <div class="card-header bg-white"><strong><i class="bi bi-people"></i> People at the key board</strong>
+                <div class="small text-muted">The device in the key room is used only for keys, so a face scan proves the person was at the board at that time.</div>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle">
+                    <thead class="table-light"><tr><th>#</th><th>Name</th><th>Why listed</th><th>Seen</th></tr></thead>
+                    <tbody>
+                        @if (i.Suspects.Count == 0)
+                        {
+                            <tr><td colspan="4" class="text-muted text-center py-3">Nobody's face was scanned in the time window.</td></tr>
+                        }
+                        @foreach (var s in i.Suspects)
+                        {
+                            <tr class="@(s.Rank == 1 ? "table-warning" : "")">
+                                <td>@s.Rank</td>
+                                <td class="fw-bold">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <partial name="_Avatar" model="@(((int?)s.EmpEnroll, s.EmpName, "md"))" />
+                                        <div>
+                                            @s.EmpName
+                                            @if (s.IsAuthorized) { <span class="badge bg-success ms-1">authorized</span> }
+                                            else { <span class="badge bg-danger ms-1">not authorized</span> }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="small">@s.Reason</td>
+                                <td class="small text-nowrap">@s.SeenAt?.ToString("HH:mm:ss")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white small text-muted">
+                This list shows who was present — it is evidence to follow up, not proof by itself. Confirm with the people involved before taking action.
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-3 kc-static">
+            <div class="card-header bg-white"><strong><i class="bi bi-clock-history"></i> @i.KeyName — all scans that day</strong></div>
+            <ul class="list-group list-group-flush">
+                @if (Model.KeyTimeline.Count == 0)
+                {
+                    <li class="list-group-item text-muted">This key was not scanned at all that day.</li>
+                }
+                @foreach (var e in Model.KeyTimeline)
+                {
+                    <a asp-action="Movement" asp-route-id="@e.Id" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <partial name="_Avatar" model="@((e.FaceEnroll, e.FaceName ?? "No face", "sm"))" />
+                            <div>
+                                <span class="badge @(e.Direction == KcDirection.Out ? "bg-primary" : "bg-secondary")">@e.Direction</span>
+                                <span class="ms-2">@e.ScanTime.ToString("HH:mm:ss")</span>
+                                <div class="small text-muted">@(e.FaceName ?? "no face scanned")@(e.FaceOffsetSec != null ? $" ({e.FaceOffsetSec:+0;-0;0}s)" : "")</div>
+                            </div>
+                        </div>
+                        <partial name="_Result" model="e.Result" />
+                    </a>
+                }
+            </ul>
+        </div>
+
+        <div class="card border-0 shadow-sm kc-static">
+            <div class="card-header bg-white"><strong><i class="bi bi-clipboard-check"></i> Security review</strong></div>
+            <div class="card-body">
+                <p class="small mb-2">Current status: <span class="badge @(i.Status == KcStatus.Confirmed ? "bg-danger" : i.Status == KcStatus.Dismissed ? "bg-secondary" : "bg-warning text-dark")">@i.Status</span>
+                    @if (i.ReviewedAt != null) { <span class="text-muted">on @i.ReviewedAt.Value.ToString("dd MMM yyyy HH:mm")</span> }
+                </p>
+                <form asp-action="Review" method="post">
+                    <input type="hidden" name="id" value="@i.Id" />
+                    <textarea name="note" class="form-control mb-2" rows="3" maxlength="500" placeholder="Note (who you spoke to, what they said)">@i.ReviewNote</textarea>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button name="status" value="@KcStatus.Confirmed" class="btn btn-danger btn-sm"><i class="bi bi-check2-circle"></i> Confirm violation</button>
+                        <button name="status" value="@KcStatus.Dismissed" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle"></i> Dismiss</button>
+                        @if (i.Status != KcStatus.Open)
+                        {
+                            <button name="status" value="@KcStatus.Open" class="btn btn-link btn-sm">Re-open</button>
+                        }
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

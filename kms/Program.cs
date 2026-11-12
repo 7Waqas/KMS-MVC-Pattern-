@@ -37,6 +37,10 @@ builder.Services.AddControllersWithViews()
 
 var useMockData = builder.Configuration.GetValue<bool>("UseMockData");
 
+builder.Services.Configure<kms.Services.KeyCustody.KeyCustodyOptions>(
+    builder.Configuration.GetSection("KeyCustody"));
+builder.Services.AddScoped<kms.Services.KeyCustody.KeyCustodyQueries>();
+
 if (useMockData)
 {
     // ╔════════════════════════════════════════╗
@@ -70,6 +74,10 @@ else
 
     // Register Real Database Service
     builder.Services.AddScoped<IDashboardService, DatabaseDashboardService>();
+
+    // Key Custody Intelligence: background processor reading tmpTRecords
+    builder.Services.AddScoped<kms.Services.KeyCustody.KeyCustodyProcessor>();
+    builder.Services.AddHostedService<kms.Services.KeyCustody.KeyCustodyBackgroundService>();
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     var server = connectionString?.Split(';')[0].Replace("Server=", "");
@@ -291,14 +299,17 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Enable OpenAPI and Scalar (available in both dev and production)
-app.MapOpenApi();
-app.MapScalarApiReference(options =>
+// API documentation only while developing — in production it would publish a map of the API.
+if (app.Environment.IsDevelopment())
 {
-    options
-        .WithTitle("Key Management System API")
-        .WithTheme(ScalarTheme.Purple)
-        .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
-});
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options
+            .WithTitle("Key Management System API")
+            .WithTheme(ScalarTheme.Purple)
+            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+    });
+}
 
 app.Run();

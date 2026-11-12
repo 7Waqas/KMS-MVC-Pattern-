@@ -1,0 +1,58 @@
+/* Printable reports (A4). Screen view = a white sheet with a toolbar; print = just the sheet. */
+:root { --ink: #111; --muted: #555; --line: #bbb; --head: #eef2ef; --brand: #0a3d1f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #e9ecef; color: var(--ink); font-family: "Segoe UI", Tahoma, Arial, sans-serif; font-size: 13px; }
+
+.toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+           padding: 10px 16px; background: #0a3d1f; color: #fff; }
+.toolbar a, .toolbar button { border: 0; border-radius: 6px; padding: 7px 14px; font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; }
+.toolbar .primary { background: #fff; color: #0a3d1f; }
+.toolbar .ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5); }
+.toolbar input { border-radius: 6px; border: 0; padding: 6px 8px; }
+
+.sheet { width: 210mm; min-height: 297mm; margin: 16px auto; background: #fff; padding: 14mm 14mm 12mm; box-shadow: 0 2px 10px rgba(0,0,0,.15); }
+@media (max-width: 230mm) { .sheet { width: auto; min-height: 0; margin: 0; padding: 16px; } }
+
+.rh { display: flex; align-items: center; gap: 14px; border-bottom: 3px double var(--brand); padding-bottom: 8px; margin-bottom: 12px; }
+.rh img { height: 54px; filter: brightness(0) saturate(100%) invert(18%) sepia(90%) saturate(600%) hue-rotate(100deg) brightness(60%); }
+.rh__org { font-size: 12px; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
+.rh__title { font-size: 20px; font-weight: 700; color: var(--brand); margin: 2px 0; }
+.rh__meta { margin-left: auto; text-align: right; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.rh__meta b { color: var(--ink); }
+
+.note { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+.boxes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.box { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.box b { display: block; font-size: 22px; line-height: 1.1; }
+.box span { font-size: 11px; color: var(--muted); }
+.box--bad b { color: #b02a37; } .box--ok b { color: #146c43; } .box--warn b { color: #9a5b00; }
+
+h2 { font-size: 14px; margin: 16px 0 6px; padding: 4px 8px; background: var(--head); border-left: 4px solid var(--brand); }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid var(--line); padding: 5px 6px; text-align: left; vertical-align: middle; }
+th { background: var(--head); font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; }
+td.num { width: 28px; text-align: center; color: var(--muted); }
+td.time { white-space: nowrap; width: 62px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.tag--bad { color: #b02a37; border-color: #b02a37; }
+.tag--warn { color: #9a5b00; border-color: #9a5b00; }
+.tag--ok { color: #146c43; border-color: #146c43; }
+.empty { padding: 10px; border: 1px dashed var(--line); color: var(--muted); text-align: center; }
+.ph { width: 34px; height: 34px; border-radius: 5px; object-fit: cover; vertical-align: middle; margin-right: 6px; background: #ddd; }
+.tick { width: 16px; height: 16px; border: 1.5px solid #333; display: inline-block; border-radius: 3px; vertical-align: middle; }
+.blank { display: inline-block; min-width: 120px; border-bottom: 1px solid #333; height: 14px; }
+
+.sign { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 28px; }
+.sign div { border-top: 1px solid #333; padding-top: 4px; font-size: 12px; }
+.sign small { color: var(--muted); }
+.foot { margin-top: 18px; font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; }
+
+@page { size: A4; margin: 10mm; }
+@media print {
+    body { background: #fff; }
+    .toolbar { display: none !important; }
+    .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+    tr { page-break-inside: avoid; }
+    h2 { page-break-after: avoid; }
+    th, h2, .box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

@@ -1,0 +1,10 @@
+@using kms.Models.KeyCustody
+@model string
+@if (Model == KcDirection.Out)
+{
+    <span class="badge bg-primary"><i class="bi bi-box-arrow-up-right"></i> Taken</span>
+}
+else
+{
+    <span class="badge bg-secondary"><i class="bi bi-box-arrow-in-down-left"></i> Returned</span>
+}

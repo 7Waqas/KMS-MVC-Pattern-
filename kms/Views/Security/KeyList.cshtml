@@ -1,0 +1,131 @@
+@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@model KeyListReportViewModel
+@{
+    Layout = null;
+    string Short(string name) => name.Replace("key_", "").Trim();
+    var dateStr = Model.Date.ToString("yyyy-MM-dd");
+    var isOut = Model.List == "out";
+    var title = isOut ? "Keys Still Out" : "Keys Not Taken";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title @Model.Date.ToString("dd-MM-yyyy") - KMS</title>
+    <link rel="stylesheet" href="~/css/print-report.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="toolbar">
+        <form method="get" style="display:flex;gap:8px;align-items:center;margin:0">
+            <input type="hidden" name="list" value="@Model.List" />
+            <label for="d">Date</label>
+            <input id="d" type="date" name="date" value="@dateStr" onchange="this.form.submit()" />
+        </form>
+        <button class="primary" onclick="window.print()">🖨 Print</button>
+        @if (isOut)
+        {
+            <a class="ghost" asp-action="KeyList" asp-route-list="nottaken" asp-route-date="@dateStr">Keys not taken</a>
+        }
+        else
+        {
+            <a class="ghost" asp-action="KeyList" asp-route-list="out" asp-route-date="@dateStr">Keys still out</a>
+        }
+        <a class="ghost" asp-action="DailyReport" asp-route-date="@dateStr">Daily report</a>
+        <a class="ghost" asp-controller="Home" asp-action="Index">Back to dashboard</a>
+    </div>
+
+    <div class="sheet">
+        <div class="rh">
+            <img src="~/images/emblem_transparent.png" alt="Emblem" />
+            <div>
+                <div class="rh__org">Ministry of Defence · Key Management System</div>
+                <div class="rh__title">@title</div>
+                <div style="font-size:14px"><b>@Model.Date.ToString("dddd, dd MMMM yyyy")</b>@(Model.IsToday ? $" · as at {Model.PrintedAt:HH:mm}" : "")</div>
+            </div>
+            <div class="rh__meta">
+                Printed: <b>@Model.PrintedAt.ToString("dd MMM yyyy HH:mm")</b><br />
+                By: <b>@Model.PrintedBy</b><br />
+                <b>@Model.Keys.Count</b> key(s)
+            </div>
+        </div>
+
+        @if (isOut)
+        {
+            <p class="note">Keys taken from the board and not yet scanned back. Tick each key as it is collected or seen returned.</p>
+        }
+        else
+        {
+            <p class="note">Keys that have not been taken from the board on this day. Tick each key physically seen on the board.</p>
+        }
+
+        @if (Model.Keys.Count == 0)
+        {
+            <div class="empty">@(isOut ? "No keys are out — all keys are back." : "Every key was taken at least once.")</div>
+        }
+        else if (isOut)
+        {
+            <table>
+                <thead><tr><th>#</th><th>Key</th><th>Location</th><th>Taken by</th><th>Since</th><th>Note</th><th>Collected</th><th>Remarks</th></tr></thead>
+                <tbody>
+                    @{ int n = 1; }
+                    @foreach (var k in Model.Keys)
+                    {
+                        <tr>
+                            <td class="num">@(n++)</td>
+                            <td><b>@Short(k.KeyName)</b></td>
+                            <td>@k.Location</td>
+                            <td style="white-space:nowrap">
+                                @if (k.HolderEnroll != null)
+                                {
+                                    <img class="ph" src="@Url.Action("Photo", new { id = k.HolderEnroll })" alt="" onerror="this.remove()" />
+                                }
+                                @(k.Holder ?? "Unknown")
+                            </td>
+                            <td class="time">@k.Since?.ToString("HH:mm")</td>
+                            <td>
+                                @if (k.LastResult == KcResult.NoFace) { <span class="tag tag--warn">no face</span> }
+                                else if (k.LastResult == KcResult.NotAuthorized) { <span class="tag tag--bad">wrong person</span> }
+                                else { <span class="tag tag--ok">authorized</span> }
+                            </td>
+                            <td style="text-align:center"><span class="tick"></span></td>
+                            <td><span class="blank"></span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <table>
+                <thead><tr><th>#</th><th>Key</th><th>Location</th><th>Authorized persons</th><th>On board</th></tr></thead>
+                <tbody>
+                    @{ int m = 1; }
+                    @foreach (var k in Model.Keys)
+                    {
+                        <tr>
+                            <td class="num">@(m++)</td>
+                            <td><b>@Short(k.KeyName)</b></td>
+                            <td>@k.Location</td>
+                            <td style="font-size:11.5px">@(Model.AuthorizedNames.TryGetValue(k.KeyEnroll, out var names) ? names : "—")</td>
+                            <td style="text-align:center"><span class="tick"></span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="sign">
+            <div>Security Officer<br /><small>Name / Signature / Time</small></div>
+            <div>Checked by<br /><small>Name / Signature / Date</small></div>
+        </div>
+        <div class="foot"><span>Generated by KMS from the key-room face/card device.</span><span>@Model.Date.ToString("dd-MM-yyyy")</span></div>
+    </div>
+
+    @if (Model.AutoPrint)
+    {
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>
+    }
+</body>
+</html>

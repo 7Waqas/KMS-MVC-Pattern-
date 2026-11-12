@@ -34,7 +34,22 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" asp-controller="Home" asp-action="Index">
-                            <i class="bi bi-house-door"></i> Dashboard
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Security" asp-action="Index">
+                            <i class="bi bi-grid-3x3-gap"></i> Key Board
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Security" asp-action="Log">
+                            <i class="bi bi-list-columns-reverse"></i> Key Log
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Security" asp-action="Incidents">
+                            <i class="bi bi-shield-exclamation"></i> Incidents
                         </a>
                     </li>
                     <li class="nav-item dropdown">
@@ -44,36 +59,40 @@
                         </a>
                         <ul class="dropdown-menu">
                             <li>
-                                <a class="dropdown-item"
-                                   asp-controller="Reports"
-                                   asp-action="MorningKeysNotTaken">
-                                    <i class="bi bi-sunrise text-warning"></i>
-                                    Morning Keys NOT Taken
+                                <a class="dropdown-item" asp-controller="Security" asp-action="DailyReport" target="_blank">
+                                    <i class="bi bi-printer text-primary"></i> Daily Security Report
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item"
-                                   asp-controller="Reports"
-                                   asp-action="EveningKeysNotReturned">
-                                    <i class="bi bi-sunset text-info"></i>
-                                    Evening Keys NOT Returned
+                                <a class="dropdown-item" asp-controller="Security" asp-action="KeyList" asp-route-list="out" target="_blank">
+                                    <i class="bi bi-box-arrow-up-right text-danger"></i> Keys Still Out
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item"
-                                   asp-controller="Reports"
-                                   asp-action="UnauthorizedAccess">
-                                    <i class="bi bi-exclamation-triangle text-danger"></i>
-                                    Unauthorized Access
+                                <a class="dropdown-item" asp-controller="Security" asp-action="Audit">
+                                    <i class="bi bi-clipboard-data text-success"></i> Audit Report
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Classic reports (old rules)</h6></li>
                             <li>
-                                <a class="dropdown-item"
-                                   asp-controller="Reports"
-                                   asp-action="FullDailyLog">
-                                    <i class="bi bi-journal-text text-primary"></i>
-                                    Full Daily Log
+                                <a class="dropdown-item" asp-controller="Reports" asp-action="MorningKeysNotTaken">
+                                    <i class="bi bi-sunrise text-warning"></i> Morning Keys NOT Taken
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Reports" asp-action="EveningKeysNotReturned">
+                                    <i class="bi bi-sunset text-info"></i> Evening Keys NOT Returned
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Reports" asp-action="UnauthorizedAccess">
+                                    <i class="bi bi-exclamation-triangle text-danger"></i> Unauthorized Access
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Reports" asp-action="FullDailyLog">
+                                    <i class="bi bi-journal-text text-primary"></i> Full Daily Log
                                 </a>
                             </li>
                         </ul>
@@ -171,6 +190,12 @@
 
     <!-- Custom JS -->
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <!-- Live security alerts -->
+        <script src="~/js/kc-alerts.js" asp-append-version="true"></script>
+    }
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

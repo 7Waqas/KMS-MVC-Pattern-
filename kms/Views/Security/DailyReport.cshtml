@@ -1,0 +1,132 @@
+@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@model DailyReportViewModel
+@{
+    Layout = null;
+    string Short(string name) => name.Replace("key_", "").Trim();
+    string TagClass(string type) => type is KcIncidentType.NoFace or KcIncidentType.ReturnNotScanned ? "tag--warn" : "tag--bad";
+    var dateStr = Model.Date.ToString("yyyy-MM-dd");
+    var status = Model.IsToday ? $"Day in progress — situation at {Model.PrintedAt:HH:mm}"
+               : Model.DayOver ? "Day closed" : "Day not yet closed (scans may still be arriving)";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Security Report @Model.Date.ToString("dd-MM-yyyy") - KMS</title>
+    <link rel="stylesheet" href="~/css/print-report.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="toolbar">
+        <form method="get" style="display:flex;gap:8px;align-items:center;margin:0">
+            <label for="d">Date</label>
+            <input id="d" type="date" name="date" value="@dateStr" onchange="this.form.submit()" />
+        </form>
+        <button class="primary" onclick="window.print()">🖨 Print</button>
+        <a class="ghost" asp-action="KeyList" asp-route-list="out" asp-route-date="@dateStr">Keys still out</a>
+        <a class="ghost" asp-controller="Home" asp-action="Index">Back to dashboard</a>
+    </div>
+
+    <div class="sheet">
+        <div class="rh">
+            <img src="~/images/emblem_transparent.png" alt="Emblem" />
+            <div>
+                <div class="rh__org">Ministry of Defence · Key Management System</div>
+                <div class="rh__title">Daily Key Security Report</div>
+                <div style="font-size:14px"><b>@Model.Date.ToString("dddd, dd MMMM yyyy")</b></div>
+            </div>
+            <div class="rh__meta">
+                Printed: <b>@Model.PrintedAt.ToString("dd MMM yyyy HH:mm")</b><br />
+                By: <b>@Model.PrintedBy</b><br />
+                @status
+            </div>
+        </div>
+
+        <div class="boxes">
+            <div class="box"><b>@Model.KeysTaken</b><span>Keys taken</span></div>
+            <div class="box box--ok"><b>@Model.KeysReturned</b><span>Keys returned</span></div>
+            <div class="box @(Model.StillOut.Count > 0 ? "box--bad" : "box--ok")"><b>@Model.StillOut.Count</b><span>Keys not returned</span></div>
+            <div class="box"><b>@Model.KeysNotMoved</b><span>Keys not taken</span></div>
+            <div class="box"><b>@Model.ScansTotal</b><span>Key scans</span></div>
+            <div class="box box--ok"><b>@Model.ScansOk</b><span>Correct (authorized face)</span></div>
+            <div class="box @(Model.ScansWrongPerson > 0 ? "box--bad" : "")"><b>@Model.ScansWrongPerson</b><span>By wrong person</span></div>
+            <div class="box @(Model.ScansNoFace > 0 ? "box--warn" : "")"><b>@Model.ScansNoFace</b><span>No face scanned</span></div>
+        </div>
+
+        <h2>1. Problems (@Model.Problems.Count)</h2>
+        @if (Model.Problems.Count == 0)
+        {
+            <div class="empty">No problems recorded.</div>
+        }
+        else
+        {
+            <table>
+                <thead><tr><th>#</th><th>Time</th><th>Key</th><th>Person</th><th>Problem</th><th>Review</th></tr></thead>
+                <tbody>
+                    @{ int n = 1; }
+                    @foreach (var p in Model.Problems)
+                    {
+                        <tr>
+                            <td class="num">@(n++)</td>
+                            <td class="time">@p.OccurredAt?.ToString("HH:mm:ss")</td>
+                            <td><b>@Short(p.KeyName)</b></td>
+                            <td>@(p.PersonName ?? "Unknown")</td>
+                            <td><span class="tag @TagClass(p.Type)">@KcIncidentType.Label(p.Type)</span></td>
+                            <td>@(p.Status == KcStatus.Open ? "" : p.Status)@(p.ReviewNote != null ? " — " + p.ReviewNote : "")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if (!Model.DayOver)
+        {
+            <p class="note" style="margin-top:6px">"Taken without any scan" and "Return not scanned" are added after the end of the day.</p>
+        }
+
+        <h2>2. Keys not returned (@Model.StillOut.Count)</h2>
+        @if (Model.StillOut.Count == 0)
+        {
+            <div class="empty">All keys taken were returned.</div>
+        }
+        else
+        {
+            <table>
+                <thead><tr><th>#</th><th>Key</th><th>Location</th><th>Taken by</th><th>Since</th><th>Note</th></tr></thead>
+                <tbody>
+                    @{ int m = 1; }
+                    @foreach (var k in Model.StillOut)
+                    {
+                        <tr>
+                            <td class="num">@(m++)</td>
+                            <td><b>@Short(k.KeyName)</b></td>
+                            <td>@k.Location</td>
+                            <td>@(k.Holder ?? "Unknown")</td>
+                            <td class="time">@k.Since?.ToString("HH:mm")</td>
+                            <td>
+                                @if (k.LastResult == KcResult.NoFace) { <span class="tag tag--warn">no face</span> }
+                                else if (k.LastResult == KcResult.NotAuthorized) { <span class="tag tag--bad">wrong person</span> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h2>3. Security officer's remarks</h2>
+        <div style="border:1px solid var(--line);min-height:70px;border-radius:4px"></div>
+
+        <div class="sign">
+            <div>Security Officer<br /><small>Name / Signature / Date</small></div>
+            <div>Checked by<br /><small>Name / Signature / Date</small></div>
+        </div>
+
+        <div class="foot"><span>Generated by KMS from the key-room face/card device.</span><span>@Model.Date.ToString("dd-MM-yyyy")</span></div>
+    </div>
+
+    @if (Model.AutoPrint)
+    {
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>
+    }
+</body>
+</html>

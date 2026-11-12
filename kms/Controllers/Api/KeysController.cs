@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace kms.Controllers.Api
 {
+    [Microsoft.AspNetCore.Authorization.Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class KeysController : ControllerBase

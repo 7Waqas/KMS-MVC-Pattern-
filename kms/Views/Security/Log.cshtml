@@ -1,0 +1,118 @@
+@using kms.Models.KeyCustody
+@using kms.Models.ViewModels
+@model KeyLogViewModel
+@{
+    ViewData["Title"] = "Key Log";
+    string Short(string name) => name.Replace("key_", "").Trim();
+    var single = Model.From == Model.To;
+    // link that keeps every current filter but changes one
+    string Link(string? result = null, bool clearResult = false) => Url.Action("Log", new
+    {
+        from = Model.From.ToString("yyyy-MM-dd"), to = Model.To.ToString("yyyy-MM-dd"),
+        result = clearResult ? null : (result ?? Model.Result),
+        direction = Model.Direction, hour = Model.Hour, key = Model.KeyEnroll, q = Model.Search
+    })!;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+    <div>
+        <h1 class="h2 fw-bold mb-1"><i class="bi bi-list-columns-reverse"></i> Key Log</h1>
+        <p class="text-muted mb-0">Every key scan — click any row to see who took it, who was at the board, and why it is OK or not.</p>
+    </div>
+    <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+</div>
+
+<div class="card border-0 shadow-sm mb-3 kc-static">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold mb-1">From</label>
+                <input type="date" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold mb-1">To</label>
+                <input type="date" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold mb-1">Taken / returned</label>
+                <select name="direction" class="form-select">
+                    <option value="">Both</option>
+                    <option value="@KcDirection.Out" selected="@(Model.Direction == KcDirection.Out)">Taken</option>
+                    <option value="@KcDirection.In" selected="@(Model.Direction == KcDirection.In)">Returned</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold mb-1">Hour</label>
+                <select name="hour" class="form-select">
+                    <option value="">All day</option>
+                    @for (int h = 0; h < 24; h++)
+                    {
+                        <option value="@h" selected="@(Model.Hour == h)">@h.ToString("00"):00 – @h.ToString("00"):59</option>
+                    }
+                </select>
+            </div>
+            <div class="col-8 col-md-3">
+                <label class="form-label small fw-bold mb-1">Key or person</label>
+                <input type="text" name="q" class="form-control" value="@Model.Search" placeholder="e.g. D-23 or a name" />
+            </div>
+            @if (Model.Result != null) { <input type="hidden" name="result" value="@Model.Result" /> }
+            @if (Model.KeyEnroll != null) { <input type="hidden" name="key" value="@Model.KeyEnroll" /> }
+            <div class="col-4 col-md-1 d-grid">
+                <button class="btn btn-success" aria-label="Apply filters"><i class="bi bi-funnel"></i></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- result filter chips -->
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="@Link(clearResult: true)" class="btn btn-sm @(Model.Result == null ? "btn-dark" : "btn-outline-dark")">All @(Model.CountOk + Model.CountNoFace + Model.CountWrongPerson)</a>
+    <a href="@Link(KcResult.Ok)" class="btn btn-sm @(Model.Result == KcResult.Ok ? "btn-success" : "btn-outline-success")">Authorized @Model.CountOk</a>
+    <a href="@Link(KcResult.NoFace)" class="btn btn-sm @(Model.Result == KcResult.NoFace ? "btn-warning" : "btn-outline-warning")">No face @Model.CountNoFace</a>
+    <a href="@Link(KcResult.NotAuthorized)" class="btn btn-sm @(Model.Result == KcResult.NotAuthorized ? "btn-danger" : "btn-outline-danger")">Wrong person @Model.CountWrongPerson</a>
+    @if (Model.Hour != null || Model.KeyEnroll != null || Model.Direction != null || !string.IsNullOrEmpty(Model.Search))
+    {
+        <a asp-action="Log" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-sm btn-link">Clear filters</a>
+    }
+</div>
+
+<p class="text-muted small">
+    @Model.TotalMatching scan(s) · @(single ? Model.From.ToString("dd MMM yyyy") : $"{Model.From:dd MMM yyyy} – {Model.To:dd MMM yyyy}")
+    @if (Model.Hour != null) { <span>· @Model.Hour.Value.ToString("00"):00–@Model.Hour.Value.ToString("00"):59</span> }
+    @if (Model.TotalMatching > Model.Items.Count) { <span>— showing the latest @Model.Items.Count</span> }
+</p>
+
+<div class="card border-0 shadow-sm kc-static">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    @if (!single) { <th>Date</th> }
+                    <th>Time</th><th>Key</th><th></th><th>Person (face scanned)</th><th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-5">No key scans for this filter.</td></tr>
+                }
+                @foreach (var e in Model.Items)
+                {
+                    <tr class="kc-row" onclick="location.href='@Url.Action("Movement", new { id = e.Id })'">
+                        @if (!single) { <td class="text-nowrap">@e.ScanDate.ToString("dd MMM")</td> }
+                        <td class="text-nowrap">@e.ScanTime.ToString("HH:mm:ss")</td>
+                        <td class="fw-bold text-nowrap">@Short(e.KeyName)</td>
+                        <td><partial name="_Direction" model="e.Direction" /></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <partial name="_Avatar" model="@((e.FaceEnroll, e.FaceName ?? "No face", "sm"))" />
+                                <span>@(e.FaceName ?? "— no face scanned —")</span>
+                            </div>
+                        </td>
+                        <td><partial name="_Result" model="e.Result" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

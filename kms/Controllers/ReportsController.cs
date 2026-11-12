@@ -22,6 +22,7 @@ namespace kms.Controllers
         {
             return View();
         }
+
         // =============================================
         // REPORT 5: Hourly Drill-Down (Chart Click)
         // =============================================
@@ -59,102 +60,176 @@ namespace kms.Controllers
             return View(viewModel);
         }
 
-
         // =============================================
-        // REPORT 1: Morning Keys NOT Taken
+        // REPORT 1: Morning Keys NOT Taken (date range)
         // =============================================
-        public async Task<IActionResult> MorningKeysNotTaken(DateOnly? date)
+        public async Task<IActionResult> MorningKeysNotTaken(DateOnly? fromDate, DateOnly? toDate)
         {
-            var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
-            var yesterday = selectedDate.AddDays(-1);
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var startDate = fromDate ?? today;
+            var endDate = toDate ?? startDate;
+            if (endDate < startDate)
+            {
+                (startDate, endDate) = (endDate, startDate);
+            }
 
-            // Get all active keys
             var allKeys = await _context.KeyMasters
                 .Where(k => k.IsActive == true)
+                .OrderBy(k => k.KeyName)
                 .ToListAsync();
 
-            // Get keys that WERE taken today morning (ReportType = 1)
-            var takenTodayKeyNames = await _context.KeyReportData
-                .Where(r => r.ReportDate.Year == selectedDate.Year &&
-                            r.ReportDate.Month == selectedDate.Month &&
-                            r.ReportDate.Day == selectedDate.Day &&
-                            r.ReportType == 1)
-                .Select(r => r.KeyName)
+            // Full morning-scan history (all time), newest first, used to find the
+            // "last taken by" person for keys that weren't taken on a given day.
+            var morningHistory = await _context.KeyReportData
+                .Where(r => r.ReportType == 1)
+                .OrderByDescending(r => r.ReportDate)
+                .ThenByDescending(r => r.ScanTime)
                 .ToListAsync();
 
-            // Get keys that were NOT returned yesterday evening (ReportType = 2)
-            var returnedYesterdayKeyNames = await _context.KeyReportData
-                .Where(r => r.ReportDate.Year == yesterday.Year &&
-                            r.ReportDate.Month == yesterday.Month &&
-                            r.ReportDate.Day == yesterday.Day &&
-                            r.ReportType == 2)
-                .Select(r => r.KeyName)
-                .ToListAsync();
+            var morningHistoryByKey = morningHistory
+                .GroupBy(r => r.KeyName)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-            // Keys not taken today
-            var notTakenTodayKeys = allKeys
-                .Where(k => !takenTodayKeyNames.Contains(k.KeyName))
-                .ToList();
+            var notTakenRows = new List<Dictionary<string, object>>();
 
-            // Keys not returned yesterday
-            var notReturnedYesterdayKeys = allKeys
-                .Where(k => !returnedYesterdayKeyNames.Contains(k.KeyName))
-                .ToList();
+            for (var d = startDate; d <= endDate; d = d.AddDays(1))
+            {
+                var takenKeyNames = await _context.KeyReportData
+                    .Where(r => r.ReportDate == d && r.ReportType == 1)
+                    .Select(r => r.KeyName)
+                    .ToListAsync();
+
+                foreach (var key in allKeys.Where(k => !takenKeyNames.Contains(k.KeyName)))
+                {
+                    var lastTakenBy = "--";
+                    if (morningHistoryByKey.TryGetValue(key.KeyName, out var history))
+                    {
+                        var last = history.FirstOrDefault(r => r.ReportDate < d);
+                        if (last != null)
+                        {
+                            lastTakenBy = string.IsNullOrWhiteSpace(last.Employee)
+                                ? "--"
+                                : $"{last.Employee} (last on {last.ReportDate:dd MMM yyyy})";
+                        }
+                    }
+
+                    notTakenRows.Add(new Dictionary<string, object>
+                    {
+                        { "Date", d },
+                        { "KeyName", key.KeyName },
+                        { "KeyLocation", key.KeyLocation ?? "" },
+                        { "TakenBy", lastTakenBy },
+                        { "AuthorizedPersons", GetAuthorizedPersons(key.EnrollNumber) }
+                    });
+                }
+            }
+
+            // "Yesterday not returned" alert only applies to the single-day (today) view
+            var isSingleDay = startDate == endDate;
+            var yesterday = endDate.AddDays(-1);
+            var notReturnedYesterdayKeys = new List<KeyMaster>();
+
+            if (isSingleDay)
+            {
+                var returnedYesterdayKeyNames = await _context.KeyReportData
+                    .Where(r => r.ReportDate == yesterday && r.ReportType == 2)
+                    .Select(r => r.KeyName)
+                    .ToListAsync();
+
+                notReturnedYesterdayKeys = allKeys
+                    .Where(k => !returnedYesterdayKeyNames.Contains(k.KeyName))
+                    .ToList();
+            }
 
             var viewModel = new ReportViewModel
             {
-                SelectedDate = selectedDate,
+                SelectedDate = startDate,
                 ReportType = 1,
                 ReportTitle = "Morning Keys NOT Taken",
-                TotalRecords = notTakenTodayKeys.Count
+                TotalRecords = notTakenRows.Count
             };
 
-            ViewBag.NotTakenTodayKeys = notTakenTodayKeys;
+            ViewBag.NotTakenRows = notTakenRows;
+            ViewBag.FromDate = startDate;
+            ViewBag.ToDate = endDate;
+            ViewBag.IsSingleDay = isSingleDay;
             ViewBag.NotReturnedYesterdayKeys = notReturnedYesterdayKeys;
             ViewBag.NotReturnedYesterdayCount = notReturnedYesterdayKeys.Count;
-            ViewBag.SelectedDate = selectedDate;
             ViewBag.Yesterday = yesterday;
 
             return View(viewModel);
         }
 
         // =============================================
-        // REPORT 2: Evening Keys NOT Returned
+        // REPORT 2: Evening Keys NOT Returned (date range)
         // =============================================
-        public async Task<IActionResult> EveningKeysNotReturned(DateOnly? date)
+        public async Task<IActionResult> EveningKeysNotReturned(DateOnly? fromDate, DateOnly? toDate)
         {
-            var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var startDate = fromDate ?? today;
+            var endDate = toDate ?? startDate;
+            if (endDate < startDate)
+            {
+                (startDate, endDate) = (endDate, startDate);
+            }
 
-            // Only keys that were TAKEN today (ReportType 1)
-            var takenTodayKeyNames = await _context.KeyReportData
-                .Where(r => r.ReportDate == selectedDate && r.ReportType == 1)
-                .Select(r => r.KeyName)
-                .Distinct()
-                .ToListAsync();
+            var notReturnedRows = new List<Dictionary<string, object>>();
 
-            // From those, find which ones were NOT returned (no ReportType 2)
-            var returnedKeyNames = await _context.KeyReportData
-                .Where(r => r.ReportDate == selectedDate && r.ReportType == 2)
-                .Select(r => r.KeyName)
-                .Distinct()
-                .ToListAsync();
+            for (var d = startDate; d <= endDate; d = d.AddDays(1))
+            {
+                // Raw morning records for the day, kept so we can show who took
+                // each key (they're the one still holding it since it wasn't returned).
+                var morningRecordsRaw = await _context.KeyReportData
+                    .Where(r => r.ReportDate == d && r.ReportType == 1)
+                    .ToListAsync();
 
-            var notReturnedKeys = await _context.KeyMasters
-                .Where(k => k.IsActive == true &&
-                            takenTodayKeyNames.Contains(k.KeyName) &&
-                            !returnedKeyNames.Contains(k.KeyName))
-                .ToListAsync();
+                var morningByKey = morningRecordsRaw
+                    .GroupBy(r => r.KeyName)
+                    .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.ScanTime).First());
+
+                var takenKeyNames = morningByKey.Keys.ToList();
+
+                var returnedKeyNames = await _context.KeyReportData
+                    .Where(r => r.ReportDate == d && r.ReportType == 2)
+                    .Select(r => r.KeyName)
+                    .Distinct()
+                    .ToListAsync();
+
+                var notReturnedKeys = await _context.KeyMasters
+                    .Where(k => k.IsActive == true &&
+                                takenKeyNames.Contains(k.KeyName) &&
+                                !returnedKeyNames.Contains(k.KeyName))
+                    .ToListAsync();
+
+                foreach (var key in notReturnedKeys)
+                {
+                    var takenBy = morningByKey.TryGetValue(key.KeyName, out var rec) && !string.IsNullOrWhiteSpace(rec.Employee)
+                        ? rec.Employee
+                        : "--";
+
+                    notReturnedRows.Add(new Dictionary<string, object>
+                    {
+                        { "Date", d },
+                        { "KeyName", key.KeyName },
+                        { "KeyLocation", key.KeyLocation ?? "" },
+                        { "ReturnedBy", takenBy },
+                        { "AuthorizedPersons", GetAuthorizedPersons(key.EnrollNumber) }
+                    });
+                }
+            }
 
             var viewModel = new ReportViewModel
             {
-                SelectedDate = selectedDate,
+                SelectedDate = startDate,
                 ReportType = 2,
                 ReportTitle = "Evening Keys NOT Returned",
-                TotalRecords = notReturnedKeys.Count
+                TotalRecords = notReturnedRows.Count
             };
 
-            ViewBag.NotReturnedKeys = notReturnedKeys;
-            ViewBag.SelectedDate = selectedDate;
+            ViewBag.NotReturnedRows = notReturnedRows;
+            ViewBag.FromDate = startDate;
+            ViewBag.ToDate = endDate;
+            ViewBag.IsSingleDay = startDate == endDate;
 
             return View(viewModel);
         }
@@ -166,8 +241,6 @@ namespace kms.Controllers
         {
             var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
 
-            Console.WriteLine($"UnauthorizedAccess - Selected Date: {selectedDate}");
-
             var data = await _context.KeyReportData
                 .Where(r => r.ReportDate.Year == selectedDate.Year &&
                             r.ReportDate.Month == selectedDate.Month &&
@@ -175,8 +248,6 @@ namespace kms.Controllers
                             r.ReportType == 3)
                 .OrderBy(r => r.ScanTime)
                 .ToListAsync();
-
-            Console.WriteLine($"UnauthorizedAccess - Found {data.Count} records");
 
             var enrichedData = new List<Dictionary<string, object>>();
 
@@ -234,8 +305,6 @@ namespace kms.Controllers
         {
             var selectedDate = date ?? DateOnly.FromDateTime(DateTime.Today);
 
-            Console.WriteLine($"FullDailyLog - Selected Date: {selectedDate}");
-
             var allKeys = await _context.KeyMasters
                 .Where(k => k.IsActive == true)
                 .OrderBy(k => k.KeyName)
@@ -246,9 +315,6 @@ namespace kms.Controllers
                             r.ReportDate.Month == selectedDate.Month &&
                             r.ReportDate.Day == selectedDate.Day)
                 .ToListAsync();
-
-            Console.WriteLine($"FullDailyLog - Total Keys: {allKeys.Count}");
-            Console.WriteLine($"FullDailyLog - Report Data Count: {allReportData.Count}");
 
             var morningData = allReportData.Where(r => r.ReportType == 1).ToList();
             var eveningData = allReportData.Where(r => r.ReportType == 2).ToList();
@@ -288,8 +354,6 @@ namespace kms.Controllers
 
             ViewBag.FullLog = fullLog;
             ViewBag.SelectedDate = selectedDate;
-
-            Console.WriteLine($"FullDailyLog - Full Log Count: {fullLog.Count}");
 
             return View(viewModel);
         }

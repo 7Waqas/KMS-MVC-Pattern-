@@ -1,0 +1,16 @@
+@* Employee photo with initials underneath (shown if there is no photo).
+   Model: (int? Enroll, string? Name, string Size)  Size = "sm" | "md" | "lg" *@
+@model (int? Enroll, string? Name, string Size)
+@{
+    var name = Model.Name ?? "?";
+    var initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                     .Where(w => char.IsLetter(w[0])).Take(2).Select(w => char.ToUpperInvariant(w[0])));
+    if (string.IsNullOrEmpty(initials)) initials = "?";
+}
+<span class="kc-avatar kc-avatar--@Model.Size" title="@name">
+    <span class="kc-avatar__initials">@initials</span>
+    @if (Model.Enroll is int e && e >= 1 && e <= 1000)
+    {
+        <img src="@Url.Action("Photo", "Security", new { id = e })" alt="@name" loading="lazy" onerror="this.remove()" />
+    }
+</span>
